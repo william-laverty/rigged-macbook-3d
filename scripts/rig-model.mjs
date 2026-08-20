@@ -133,7 +133,7 @@ root.getAsset().extras = {
   title: 'MacBook Pro M3 16-inch 2024 (rigged)',
   author: 'jackbaeten (https://sketchfab.com/3d-models/macbook-pro-m3-16-inch-2024-8e34fc2b303144f78490007d91ff57c4)',
   license: 'CC-BY-4.0 (https://creativecommons.org/licenses/by/4.0/)',
-  modifications: 'Space-Black recolour, hinge lid/base split, LidPivot rig, meshopt compression — rigged-macbook-3d (https://github.com/williamlaverty/rigged-macbook-3d)',
+  modifications: 'Space-Black recolour, hinge lid/base split, LidPivot rig, meshopt compression — rigged-macbook-3d (https://github.com/william-laverty/rigged-macbook-3d)',
 };
 const scene = root.getDefaultScene() ?? root.listScenes()[0];
 
