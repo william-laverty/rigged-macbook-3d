@@ -47,23 +47,29 @@ export interface MacbookScrollProps {
   children?: ReactNode;
 }
 
-/** Inner R3F component: drives pose + parallax per frame from the shared refs. */
-function ScrollRig({
-  groupRef, progressRef, pointerRef, timeline, poses, feel, count, pointerParallax,
-}: {
-  groupRef: React.MutableRefObject<THREE.Group | null>;
-  progressRef: React.MutableRefObject<number>;
-  pointerRef: React.MutableRefObject<{ x: number; y: number; active: boolean }>;
+/** The resolved config a frame/effect needs, kept live in a ref so identity churn never matters. */
+interface ResolvedConfig {
   timeline: Timeline;
   poses: ReturnType<typeof resolvePoses>;
   feel: Feel;
   count: number;
+}
+
+/** Inner R3F component: drives pose + parallax per frame from the shared refs. */
+function ScrollRig({
+  groupRef, progressRef, pointerRef, configRef, pointerParallax,
+}: {
+  groupRef: React.MutableRefObject<THREE.Group | null>;
+  progressRef: React.MutableRefObject<number>;
+  pointerRef: React.MutableRefObject<{ x: number; y: number; active: boolean }>;
+  configRef: React.MutableRefObject<ResolvedConfig>;
   pointerParallax: boolean;
 }) {
   const tilt = useRef({ x: 0, y: 0 });
   useFrame(() => {
     const g = groupRef.current;
     if (!g) return;
+    const { timeline, poses, feel, count } = configRef.current;
     const p = progressRef.current;
     const s = journeyState(p, timeline, poses, count, feel.crossfadeFraction);
 
@@ -126,6 +132,16 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
   // parent re-render (consumers commonly pass inline arrows for these).
   const callbacksRef = useRef({ onProgress, onActiveScreen });
   callbacksRef.current = { onProgress, onActiveScreen };
+  // Latest resolved config, read from the rAF loop / useFrame / imperative
+  // handle without tearing any of them down on identity churn — inline object
+  // props (timeline/poses/feel) and parent re-renders (e.g. induced by
+  // onActiveScreen → setState) would otherwise re-run the main effect below,
+  // resetting velocity and re-priming progress mid-scroll.
+  const configRef = useRef<ResolvedConfig>({ timeline, poses, feel, count });
+  configRef.current = { timeline, poses, feel, count };
+  // Guards the deep-link prime so it only runs once, on first mount — not on
+  // every re-run of the main effect (which now only depends on `capable`).
+  const primedRef = useRef(false);
 
   // Scroll → target; rAF chases it with the damped, speed-capped follow.
   useEffect(() => {
@@ -146,10 +162,16 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
       target = len > 0 ? clamp01((window.scrollY - top) / len) : 0;
     };
     measure();
-    // Prime at the current position (deep links land settled, not animating in).
-    progressRef.current = target;
+    // Prime at the current position on first mount only (deep links land
+    // settled, not animating in) — a later re-run must not snap progress
+    // back to the scroll target and kill in-flight damping.
+    if (!primedRef.current) {
+      progressRef.current = target;
+      primedRef.current = true;
+    }
 
     const render = () => {
+      const { timeline, poses, feel, count } = configRef.current;
       const sp = progressRef.current;
       // deviceIn fade/rise is DOM-side (opacity + translate on the stage wrapper).
       const s = journeyState(sp, timeline, poses, count, feel.crossfadeFraction);
@@ -171,6 +193,7 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       measure();
+      const { timeline, feel, count } = configRef.current;
       const sp = progressRef.current;
       if (sp === target && vel.current === 0 && renderedAt === sp) return; // idle
       const cap = speedCapAt(sp, timeline, feel, count);
@@ -185,7 +208,7 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [capable, timeline, poses, feel, count]);
+  }, [capable]);
 
   const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = wrapperRef.current;
@@ -204,6 +227,7 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
     () => ({
       scrollToScreen(index: number) {
         const wrapper = wrapperRef.current;
+        const { timeline, count } = configRef.current;
         if (!wrapper || count === 0) return;
         const rect = wrapper.getBoundingClientRect();
         const top = rect.top + window.scrollY;
@@ -216,13 +240,14 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
         return progressRef.current;
       },
     }),
-    [count, timeline],
+    [],
   );
 
   const frameDriver = useCallback((): MacbookFrameState => {
+    const { timeline, poses, feel, count } = configRef.current;
     const s = journeyState(progressRef.current, timeline, poses, count, feel.crossfadeFraction);
     return { open: s.open, brightness: s.brightness, screenIndex: s.screenIndex, screenMix: s.screenMix };
-  }, [timeline, poses, count, feel.crossfadeFraction]);
+  }, []);
 
   if (capable === null) return <div className={className} style={{ height }} />;
   if (!capable) return <div className={className}>{fallback}</div>;
@@ -246,10 +271,7 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
               groupRef={groupRef}
               progressRef={progressRef}
               pointerRef={pointerRef}
-              timeline={timeline}
-              poses={poses}
-              feel={feel}
-              count={count}
+              configRef={configRef}
               pointerParallax={pointerParallax}
             />
           </MacbookStage>

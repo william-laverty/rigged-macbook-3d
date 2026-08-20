@@ -1,10 +1,11 @@
-import { forwardRef, useEffect, useMemo, useRef } from 'react';
+import { forwardRef, useContext, useEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeElements } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { DEFAULT_MODEL_URL, LID, SEAT, FIT_SIZE } from './constants';
 import { clamp01 } from './math';
 import { useScreenTextures } from './useScreenTextures';
+import { StageActiveContext } from './MacbookStage';
 import type { ScreenInput } from './types';
 
 /** Per-frame state a `frameDriver` may return; fields override the matching props. */
@@ -35,7 +36,7 @@ export type MacbookProps = ThreeElements['group'] & {
    * (copy it from node_modules) — the rig is welded to that file; other models throw.
    */
   modelSrc?: string;
-  /** Called once the model is rigged and ready. */
+  /** Called once the model is rigged and ready. Screen textures may still be loading at this point. */
   onLoad?: () => void;
   /**
    * Advanced: per-frame state source, called inside the render loop. Returned
@@ -181,6 +182,27 @@ export const Macbook = forwardRef<THREE.Group, MacbookProps>(function Macbook(
 
   useEffect(() => {
     onLoad?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rig]);
+
+  // When the host stage parks its frameloop (offscreen), this component's own
+  // useFrame below stops running — but a screen video that was mid-decode
+  // would otherwise keep decoding forever. Pause it; resume happens naturally
+  // through useFrame's setPlaying once the stage wakes and frames resume.
+  const stageActive = useContext(StageActiveContext);
+  useEffect(() => {
+    if (!stageActive) pauseAll();
+  }, [stageActive, pauseAll]);
+
+  // Dispose the per-instance screen materials on unmount — geometry and
+  // textures are shared/owned elsewhere, but baseMat/overMat are minted fresh
+  // per <Macbook> instance in rigModel() and belong to this instance alone.
+  useEffect(() => {
+    const { baseMat, overMat } = rig;
+    return () => {
+      baseMat.dispose();
+      overMat.dispose();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rig]);
 

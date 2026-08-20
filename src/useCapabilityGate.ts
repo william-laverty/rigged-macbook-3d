@@ -25,8 +25,13 @@ export function useCapabilityGate(): boolean | null {
     const onChange = () => {
       if (reduceMq.matches) setCapable(false);
     };
-    reduceMq.addEventListener('change', onChange);
-    return () => reduceMq.removeEventListener('change', onChange);
+    // Safari <14 only has the older addListener/removeListener pair.
+    if (typeof reduceMq.addEventListener === 'function') {
+      reduceMq.addEventListener('change', onChange);
+      return () => reduceMq.removeEventListener('change', onChange);
+    }
+    reduceMq.addListener(onChange);
+    return () => reduceMq.removeListener(onChange);
   }, []);
 
   return capable;

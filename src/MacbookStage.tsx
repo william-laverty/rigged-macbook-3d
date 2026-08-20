@@ -1,8 +1,16 @@
-import { useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react';
+import { createContext, useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react';
 import { Canvas, type CanvasProps } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MacbookLighting } from './MacbookLighting';
 import type { LightingPreset } from './types';
+
+/**
+ * Whether the stage is "active" (rendering frames). When `pauseWhenOffscreen`
+ * parks the Canvas's frameloop, `<Macbook>`'s useFrame stops running — but any
+ * screen video it was playing keeps decoding forever unless it's told to
+ * pause. Internal — not part of the public API.
+ */
+export const StageActiveContext = createContext(true);
 
 export interface MacbookStageProps extends Omit<CanvasProps, 'children'> {
   /** Lighting preset for the stage. Default "studio-dark". */
@@ -61,7 +69,9 @@ export const MacbookStage: FC<MacbookStageProps> = ({
         {...canvasProps}
       >
         <MacbookLighting preset={lighting} intensity={lightingIntensity} />
-        {children}
+        <StageActiveContext.Provider value={pauseWhenOffscreen ? inView : true}>
+          {children}
+        </StageActiveContext.Provider>
       </Canvas>
     </div>
   );
