@@ -23,6 +23,7 @@ function normalise(input: ScreenInput): Normalised {
  * index-aligned list of THREE.Textures. Videos are muted, looping, detached
  * <video> elements driven imperatively — call `setPlaying` with the indices
  * that should decode (typically just the visible one or two); the rest pause.
+ * Note: `ScreenSource.fallbackSrc` only applies to video sources.
  */
 export function useScreenTextures(sources: ScreenInput[]) {
   const texturesRef = useRef<(THREE.Texture | null)[]>([]);

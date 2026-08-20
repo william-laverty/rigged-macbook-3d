@@ -3,7 +3,7 @@
 A genuinely rigged 3D MacBook for React — an openable lid on a real hinge, a video/image screen
 with crossfade, studio lighting presets, and an optional zero-dependency scroll journey.
 
-![Hero](docs/media/hero.png)
+![Hero](https://raw.githubusercontent.com/william-laverty/rigged-macbook-3d/main/docs/media/hero.png)
 
 Live demo: [rigged-macbook-3d-demo.vercel.app](https://rigged-macbook-3d-demo.vercel.app)
 
@@ -51,7 +51,7 @@ export default function Hero() {
 `MacbookScroll` is the full pinned scroll effect — the wrapper pins a sticky viewport, maps scroll
 position to a damped progress value, and drives the lid, the screen walkthrough, and the camera
 pose from it. It needs no scroll library. Trimmed from
-[`demo/src/Journey.tsx`](demo/src/Journey.tsx):
+[`demo/src/Journey.tsx`](https://github.com/william-laverty/rigged-macbook-3d/blob/main/demo/src/Journey.tsx):
 
 ```tsx
 import { useRef, useState } from 'react';
@@ -88,7 +88,7 @@ progress, overridable via the `timeline` prop. The `poses` prop overrides the in
 camera poses, and `feel` tunes the damped-follow feel (smooth time, max speed, per-screen minimum
 dwell, crossfade fraction). Unspecified fields in any of these keep the tuned defaults — see the
 [API reference](#api-reference) below for the full shape, and
-[`demo/src/Journey.tsx`](demo/src/Journey.tsx) / [`demo/src/TabBar.tsx`](demo/src/TabBar.tsx) for
+[`demo/src/Journey.tsx`](https://github.com/william-laverty/rigged-macbook-3d/blob/main/demo/src/Journey.tsx) / [`demo/src/TabBar.tsx`](https://github.com/william-laverty/rigged-macbook-3d/blob/main/demo/src/TabBar.tsx) for
 the complete tab-bar-driven example.
 
 ## API reference
@@ -276,24 +276,51 @@ without fighting over which parent owns the shared object.
 
 ## Fallbacks & accessibility
 
-Both `<Macbook>`'s host canvas and `<MacbookScroll>` rely on `useCapabilityGate`, which checks for
-WebGL2 support and respects `prefers-reduced-motion`. `<MacbookScroll>` uses this directly: it
-renders nothing (just a height-holding placeholder) on the very first render (SSR-safe), then
-either the journey or the `fallback` prop's content once the check resolves — and once downgraded
-to the fallback, it never reverts, since remounting a 3D scene under the user is its own kind of
-motion.
+`useCapabilityGate` checks for WebGL2 support and respects `prefers-reduced-motion`.
+`<MacbookScroll>` is the only component that gates itself with it: it renders nothing (just a
+height-holding placeholder) on the very first render (SSR-safe), then either the journey or the
+`fallback` prop's content once the check resolves — and once downgraded to the fallback, it never
+reverts, since remounting a 3D scene under the user is its own kind of motion.
 
-If you're composing `<Macbook>`/`<MacbookStage>` yourself outside of `<MacbookScroll>`, call
-`useCapabilityGate()` in your own component and branch on it the same way. Whatever you render as
-a fallback, make it meaningful non-3D content — a static screenshot, a short description, or a
-video of the effect — not an empty div; a meaningful share of users will see it.
+`<MacbookStage>`/`<Macbook>` do NOT gate themselves — used bare, they always render the 3D scene.
+If you're composing them yourself outside of `<MacbookScroll>`, call `useCapabilityGate()` in your
+own component and branch on it the same way. Whatever you render as a fallback, make it meaningful
+non-3D content — a static screenshot, a short description, or a video of the effect — not an empty
+div; a meaningful share of users will see it.
+
+## Troubleshooting
+
+**Black/blank screen with cross-origin videos.** `useScreenTextures` sets `crossOrigin="anonymous"`
+on every `<video>` element it creates, so the video host must send CORS headers (at minimum
+`Access-Control-Allow-Origin`) or the browser will refuse to let WebGL sample the decoded frames —
+the screen renders black with no error in the console. Self-hosting the video on the same origin
+as the page sidesteps this entirely.
+
+**Model fails to load / CDN blocked.** By default the model loads from a versioned unpkg URL. If
+your network/CSP blocks unpkg, or you just want to avoid the CDN round-trip, self-host it: copy
+`node_modules/rigged-macbook-3d/assets/macbook-rigged.glb` into your own static assets and pass its
+URL as `modelSrc` to `<Macbook>` / `<MacbookScroll>`.
+
+**Duplicate-`three`-version warnings.** three.js warns (and can silently break, since materials and
+textures created against one instance don't work against another) when more than one copy of
+`three` ends up in the bundle. Dedupe it — `npm ls three` to find the offender, then a `resolutions`
+(Yarn/pnpm) or `overrides` (npm) entry pinning a single version — so exactly one `three` instance is
+ever loaded.
+
+**Scroll feels unsmooth in dev.** React StrictMode's double-mount/double-effect behavior in
+development is handled (the rAF loop and the deep-link prime both tolerate it), so that's not the
+usual cause. More often it's the host page's own scroll handling forcing synchronous layout
+(reading `getBoundingClientRect`/`scrollY` inside an unthrottled scroll listener, or a
+`ResizeObserver` loop) on the same frame as the journey's damped follow — keep any of the page's
+own scroll-driven work off the main-thread-blocking path, or move it to `requestAnimationFrame` too.
 
 ## Credits & license
 
-Code is MIT licensed (see [LICENSE](LICENSE)). The 3D model — "MacBook Pro M3 16-inch 2024" by
+Code is MIT licensed (see [LICENSE](https://github.com/william-laverty/rigged-macbook-3d/blob/main/LICENSE)).
+The 3D model — "MacBook Pro M3 16-inch 2024" by
 [jackbaeten](https://sketchfab.com/3d-models/macbook-pro-m3-16-inch-2024-8e34fc2b303144f78490007d91ff57c4) —
 is CC-BY 4.0, with modifications (Space Black recolour, hinge split and pivot rig, screen panel
-isolation, meshopt compression) noted in full in [CREDITS.md](CREDITS.md).
+isolation, meshopt compression) noted in full in [CREDITS.md](https://github.com/william-laverty/rigged-macbook-3d/blob/main/CREDITS.md).
 
 This project is not affiliated with or endorsed by Apple Inc. "MacBook" is a trademark of Apple
 Inc., depicted here nominatively to describe what the model portrays.

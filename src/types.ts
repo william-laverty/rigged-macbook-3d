@@ -5,7 +5,7 @@ export interface ScreenSource {
   src: string;
   /** Force the kind when the extension is ambiguous (e.g. extensionless CDN URLs). */
   type?: 'video' | 'image';
-  /** Optional fallback (e.g. mp4 for a webm) tried if `src` fails to load/decode. */
+  /** Optional fallback (e.g. mp4 for a webm) tried if `src` fails to load/decode. Applies to video sources only. */
   fallbackSrc?: string;
   /** Optional display label — surfaced by MacbookScroll's onActiveScreen consumers. */
   label?: string;
@@ -18,7 +18,7 @@ export type ScreenInput = string | ScreenSource | THREE.Texture;
 export interface Timeline {
   /** Device fades/rises in. */
   deviceIn: [number, number];
-  /** Lid rotates closed → open (screen wakes across the back half). */
+  /** Lid rotates closed → open (screen wakes across the back 80%). */
   lidOpen: [number, number];
   /** Camera-relative dive: intro pose → dived-in pose. */
   dive: [number, number];

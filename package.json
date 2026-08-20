@@ -20,6 +20,8 @@
     "type": "git",
     "url": "git+https://github.com/william-laverty/rigged-macbook-3d.git"
   },
+  "homepage": "https://github.com/william-laverty/rigged-macbook-3d#readme",
+  "bugs": "https://github.com/william-laverty/rigged-macbook-3d/issues",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -29,7 +31,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    }
+    },
+    "./assets/macbook-rigged.glb": "./assets/macbook-rigged.glb",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",

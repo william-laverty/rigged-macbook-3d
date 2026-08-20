@@ -152,7 +152,7 @@ interface ScreenSource {
 
 interface Timeline {
   deviceIn: [number, number];  // device fades/rises in
-  lidOpen: [number, number];  // lid closed -> open; screen wakes across the back half
+  lidOpen: [number, number];  // lid closed -> open; screen wakes across the back 80%
   dive: [number, number];     // camera-relative: intro pose -> dived-in pose
   screens: [number, number];  // screen walkthrough band (crossfades happen inside it)
   recede: [number, number];   // push-back so the whole laptop is visible at hand-off
