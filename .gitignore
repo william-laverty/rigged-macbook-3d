@@ -5,3 +5,5 @@ demo/node_modules/
 .vercel/
 *.log
 .DS_Store
+.vercel
+.env*
