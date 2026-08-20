@@ -55,6 +55,90 @@ interface Rig {
 }
 
 /**
+ * Clones the loaded model and wires the hinge pivot, screen materials and fit
+ * transform onto the clone. `useGLTF` hands every caller the same cached scene,
+ * but an Object3D can only live under one parent — two <Macbook>s sharing a
+ * modelSrc would tug it back and forth and leave one of them empty. Geometries
+ * and materials stay shared, and the rig is a plain transform pivot (no skins),
+ * so a deep clone has nothing to rebind.
+ */
+function rigModel(source: THREE.Object3D): { scene: THREE.Object3D; rig: Rig } {
+  const scene = source.clone(true);
+
+  const pivot = scene.getObjectByName('LidPivot');
+  if (!pivot) {
+    throw new Error(
+      'rigged-macbook-3d: node "LidPivot" not found in the model. Only this package\'s ' +
+        'assets/macbook-rigged.glb works (the rig is welded to it). If you passed modelSrc, ' +
+        'copy the file from node_modules/rigged-macbook-3d/assets/macbook-rigged.glb.',
+    );
+  }
+  const screenMesh = scene.getObjectByName('Screen') as THREE.Mesh | undefined;
+  if (!screenMesh?.isMesh) {
+    throw new Error(
+      'rigged-macbook-3d: mesh "Screen" not found in the model — screen content cannot display. ' +
+        'Use this package\'s assets/macbook-rigged.glb.',
+    );
+  }
+
+  const baseMat = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false });
+  const overMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0,
+    toneMapped: false,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  screenMesh.material = baseMat;
+  const overlay = new THREE.Mesh(screenMesh.geometry, overMat);
+  overlay.renderOrder = 2;
+  screenMesh.add(overlay);
+
+  // envMapIntensity is a three.js-only property glTF can't carry — the bake
+  // tags the recoloured Space-Black materials; finish them here.
+  const seen = new Set<THREE.Material>();
+  scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((m) => {
+      if (!m || seen.has(m)) return;
+      seen.add(m);
+      if (m.userData?.spaceBlack && 'envMapIntensity' in m) {
+        (m as THREE.MeshStandardMaterial).envMapIntensity = 0.85;
+      }
+    });
+  });
+
+  scene.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(scene);
+  const c = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+
+  // Rig constants: prefer the values the bake embedded in the pivot's extras.
+  const e = pivot.userData as Record<string, number>;
+  const hingeY = pivot.position.y; // authored pivot position = hinge axis
+  const hingeZ = pivot.position.z;
+  const seat = {
+    hingeY,
+    hingeZ,
+    relY: (e.screenBottomY ?? SEAT.SCREEN_BOTTOM_Y) - hingeY,
+    relZ: (e.screenBottomZ ?? SEAT.SCREEN_BOTTOM_Z) - hingeZ,
+    targetY: e.seatTargetY ?? SEAT.TARGET_Y,
+    openX: e.lidOpenX ?? LID.OPEN_X,
+    closedX: e.lidClosedX ?? LID.CLOSED_X,
+  };
+
+  return {
+    scene,
+    rig: { pivot, baseMat, overMat, offset: [-c.x, -c.y, -c.z], scale: FIT_SIZE / maxDim, seat },
+  };
+}
+
+/**
  * The rigged 3D MacBook. Headless and controlled: renders exactly the state
  * its props (or `frameDriver`) describe, inside any @react-three/fiber canvas.
  * Model: "MacBook Pro M3 16-inch 2024" by jackbaeten (CC-BY 4.0), pre-rigged —
@@ -77,95 +161,23 @@ export const Macbook = forwardRef<THREE.Group, MacbookProps>(function Macbook(
   ref,
 ) {
   const url = modelSrc ?? DEFAULT_MODEL_URL;
-  const { scene } = useGLTF(url);
+  const { scene: sourceScene } = useGLTF(url);
+  // Lazy per-instance init, deliberately not useMemo: StrictMode double-invokes
+  // memo factories and discards one result, and rigModel is not idempotent —
+  // every call mints a fresh clone and fresh screen materials. Committing one
+  // call's rig alongside another call's scene leaves the frame loop driving
+  // materials that are not on the mounted mesh (a permanently black screen).
+  const built = useRef<{ source: THREE.Object3D; value: ReturnType<typeof rigModel> } | null>(null);
+  if (built.current?.source !== sourceScene) {
+    built.current = { source: sourceScene, value: rigModel(sourceScene) };
+  }
+  const { scene, rig } = built.current.value;
+
   const sources = useMemo<ScreenInput[]>(
     () => screens ?? (screen !== undefined ? [screen] : []),
     [screens, screen],
   );
   const { texturesRef, ready, setPlaying, pauseAll } = useScreenTextures(sources);
-
-  const rig = useMemo<Rig>(() => {
-    const cached = scene.userData.__riggedMacbook as Rig | undefined;
-    if (cached) return cached;
-
-    const pivot = scene.getObjectByName('LidPivot');
-    if (!pivot) {
-      throw new Error(
-        'rigged-macbook-3d: node "LidPivot" not found in the model. Only this package\'s ' +
-          'assets/macbook-rigged.glb works (the rig is welded to it). If you passed modelSrc, ' +
-          'copy the file from node_modules/rigged-macbook-3d/assets/macbook-rigged.glb.',
-      );
-    }
-    const screenMesh = scene.getObjectByName('Screen') as THREE.Mesh | undefined;
-    if (!screenMesh?.isMesh) {
-      throw new Error(
-        'rigged-macbook-3d: mesh "Screen" not found in the model — screen content cannot display. ' +
-          'Use this package\'s assets/macbook-rigged.glb.',
-      );
-    }
-
-    const baseMat = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false });
-    const overMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0,
-      toneMapped: false,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
-    });
-    screenMesh.material = baseMat;
-    const overlay = new THREE.Mesh(screenMesh.geometry, overMat);
-    overlay.renderOrder = 2;
-    screenMesh.add(overlay);
-
-    // envMapIntensity is a three.js-only property glTF can't carry — the bake
-    // tags the recoloured Space-Black materials; finish them here.
-    const seen = new Set<THREE.Material>();
-    scene.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((m) => {
-        if (!m || seen.has(m)) return;
-        seen.add(m);
-        if (m.userData?.spaceBlack && 'envMapIntensity' in m) {
-          (m as THREE.MeshStandardMaterial).envMapIntensity = 0.85;
-        }
-      });
-    });
-
-    scene.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(scene);
-    const c = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z) || 1;
-
-    // Rig constants: prefer the values the bake embedded in the pivot's extras.
-    const e = pivot.userData as Record<string, number>;
-    const hingeY = pivot.position.y; // authored pivot position = hinge axis
-    const hingeZ = pivot.position.z;
-    const seat = {
-      hingeY,
-      hingeZ,
-      relY: (e.screenBottomY ?? SEAT.SCREEN_BOTTOM_Y) - hingeY,
-      relZ: (e.screenBottomZ ?? SEAT.SCREEN_BOTTOM_Z) - hingeZ,
-      targetY: e.seatTargetY ?? SEAT.TARGET_Y,
-      openX: e.lidOpenX ?? LID.OPEN_X,
-      closedX: e.lidClosedX ?? LID.CLOSED_X,
-    };
-
-    const result: Rig = {
-      pivot,
-      baseMat,
-      overMat,
-      offset: [-c.x, -c.y, -c.z],
-      scale: FIT_SIZE / maxDim,
-      seat,
-    };
-    scene.userData.__riggedMacbook = result;
-    return result;
-  }, [scene]);
 
   useEffect(() => {
     onLoad?.();
