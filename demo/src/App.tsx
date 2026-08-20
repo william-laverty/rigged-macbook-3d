@@ -1,3 +1,4 @@
+import Journey from './Journey';
 import Playground from './Playground';
 
 export default function App() {
@@ -11,7 +12,7 @@ export default function App() {
         </p>
         <code>npm i rigged-macbook-3d three @react-three/fiber @react-three/drei</code>
       </header>
-      <div id="journey-stub" />
+      <Journey />
       <Playground />
       <footer>
         Model: “MacBook Pro M3 16-inch 2024” by jackbaeten (CC-BY 4.0) · rigged by William
