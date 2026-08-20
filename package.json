@@ -1,0 +1,73 @@
+{
+  "name": "rigged-macbook-3d",
+  "version": "0.1.0",
+  "description": "A genuinely rigged 3D MacBook for React — openable lid on a real hinge, video/image screen with crossfade, studio lighting presets, and an optional zero-dependency scroll journey. Built on three.js / @react-three/fiber.",
+  "keywords": [
+    "macbook",
+    "3d",
+    "three",
+    "react-three-fiber",
+    "r3f",
+    "scroll",
+    "laptop",
+    "webgl",
+    "glb",
+    "rigged"
+  ],
+  "author": "William Laverty",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/williamlaverty/rigged-macbook-3d.git"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "assets/macbook-rigged.glb",
+    "README.md",
+    "CREDITS.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bake": "node scripts/rig-model.mjs",
+    "build:demo": "npm run build && npm --prefix demo install && npm --prefix demo run build"
+  },
+  "peerDependencies": {
+    "@react-three/drei": ">=9.122.0",
+    "@react-three/fiber": ">=8.18.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "three": ">=0.160.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@types/react": "^19.2.18",
+    "@types/three": "^0.185.4",
+    "draco3d": "^1.5.7",
+    "meshoptimizer": "^1.2.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "three": "^0.185.1",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}
