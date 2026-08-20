@@ -122,6 +122,10 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
   const groupRef = useRef<THREE.Group | null>(null);
   const [activeScreen, setActiveScreen] = useState(0);
   const activeRef = useRef(0);
+  // Latest callbacks, read from the rAF loop without tearing it down on every
+  // parent re-render (consumers commonly pass inline arrows for these).
+  const callbacksRef = useRef({ onProgress, onActiveScreen });
+  callbacksRef.current = { onProgress, onActiveScreen };
 
   // Scroll → target; rAF chases it with the damped, speed-capped follow.
   useEffect(() => {
@@ -157,9 +161,9 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
       if (s.screenIndex !== activeRef.current) {
         activeRef.current = s.screenIndex;
         setActiveScreen(s.screenIndex);
-        onActiveScreen?.(s.screenIndex);
+        callbacksRef.current.onActiveScreen?.(s.screenIndex);
       }
-      onProgress?.(sp);
+      callbacksRef.current.onProgress?.(sp);
     };
 
     const tick = (now: number) => {
@@ -181,7 +185,7 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [capable, timeline, poses, feel, count, onProgress, onActiveScreen]);
+  }, [capable, timeline, poses, feel, count]);
 
   const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = wrapperRef.current;
