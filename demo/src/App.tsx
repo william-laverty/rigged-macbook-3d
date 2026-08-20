@@ -16,7 +16,7 @@ export default function App() {
       <Playground />
       <footer>
         Model: “MacBook Pro M3 16-inch 2024” by jackbaeten (CC-BY 4.0) · rigged by William
-        Laverty · <a href="https://github.com/williamlaverty/rigged-macbook-3d">GitHub</a>
+        Laverty · <a href="https://github.com/william-laverty/rigged-macbook-3d">GitHub</a>
       </footer>
     </>
   );
