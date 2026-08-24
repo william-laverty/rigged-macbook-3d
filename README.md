@@ -1,8 +1,6 @@
 <div align="center">
 
-# Rigged MacBook Pro 3D Model
-
-**An animatable MacBook Pro 3D model for web.**
+# Animatable MacBook Pro 3D Model
 
 Transform the MacBook in a 3D scene... animate the lid opening... play your product video on screen...
 
