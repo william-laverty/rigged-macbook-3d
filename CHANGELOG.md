@@ -8,8 +8,8 @@ which is pinned to the package version and so now resolves to the 0.1.1 asset.
 
 Rewrote the README around the hero image and a short pitch, with the API
 reference, recipes and troubleshooting moved into collapsible sections — the
-same content, but 529 visible words instead of 2,325. Refreshed the package
-description to match.
+same content, but 516 visible words instead of 2,325. The package description
+now matches the repository's.
 
 ## 0.1.0 — 2026-08-20
 
