@@ -1,0 +1,61 @@
+name: Release
+
+# Publishes to npm using trusted publishing (OIDC). There is no NPM_TOKEN and
+# no 2FA prompt — npm verifies the workflow's identity instead of a credential,
+# and attaches a provenance attestation automatically.
+#
+# The matching trusted publisher must already exist at
+# npmjs.com → rigged-macbook-3d → Settings → Trusted Publisher:
+#
+#   Organization or user   william-laverty
+#   Repository             rigged-macbook-3d
+#   Workflow filename      release.yml      <- this file; case-sensitive
+#
+# npm does not validate that configuration when it is saved, so a typo there
+# surfaces here as a publish failure rather than at setup time.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for the OIDC token exchange
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          # Deliberately no `registry-url`. It writes
+          # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into .npmrc;
+          # with no token set that expands to empty, npm treats auth as already
+          # configured, skips the OIDC exchange, and fails with ENEEDAUTH.
+          # registry.npmjs.org is the default anyway.
+
+      # Trusted publishing needs npm >= 11.5.1 — don't rely on the image's npm.
+      - run: npm install -g npm@latest
+
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag does not match package.json version $pkg"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      # `files` ships dist/, which is gitignored — it must be built here.
+      - run: npm run build
+
+      - run: npm publish
