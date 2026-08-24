@@ -1,8 +1,6 @@
 <div align="center">
 
-# rigged-macbook-3d
-
-**A genuinely rigged 3D MacBook for React.**
+# Rigged MacBook Pro 3D Model
 
 The lid opens on a real hinge. The screen plays your product video. The
 aluminium catches studio light. It's an actual GLB in an actual 3D scene —
