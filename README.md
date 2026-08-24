@@ -2,9 +2,9 @@
 
 # Rigged MacBook Pro 3D Model
 
-The lid opens on a real hinge. The screen plays your product video. The
-aluminium catches studio light. It's an actual GLB in an actual 3D scene —
-not a CSS transform on a flat PNG.
+**An animatable MacBook Pro 3D model for web.**
+
+Transform the MacBook in a 3D scene... animate the lid opening... play your product video on screen...
 
 [**Live demo**](https://rigged-macbook-3d-demo.vercel.app) · [Quick start](#quick-start) · [API](#api-reference) · [Changelog](https://github.com/william-laverty/rigged-macbook-3d/blob/main/CHANGELOG.md)
 
