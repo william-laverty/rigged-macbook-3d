@@ -36,25 +36,21 @@ export default function Hero() {
 ```
 
 That's the whole integration: a lit stage, an open MacBook, your video on the screen. The package
-itself is **7.6 kB gzipped with zero runtime dependencies** — `three` and R3F stay peers, so it adds
+itself is **6.4 kB gzipped with zero runtime dependencies** — `three` and R3F stay peers, so it adds
 nothing you aren't already shipping.
 
 ## Scroll to open it
 
-`<MacbookScroll>` is the full pinned journey — the device rises in, the lid swings open, the
-camera dives toward the screen, and your videos crossfade one into the next. No GSAP, no Lenis,
-no scroll library at all.
+`<MacbookScroll>` is the full pinned journey — the device rises in, the lid swings open onto
+your playing video, the journey holds there while the user keeps scrolling, then the device
+recedes and scroll hands off to the rest of the page. No GSAP, no Lenis, no scroll library at all.
 
 ```tsx
 import { MacbookScroll } from 'rigged-macbook-3d';
 
 <MacbookScroll
   height="600vh"
-  screens={[
-    { src: '/inbox.webm', fallbackSrc: '/inbox.mp4', label: 'Inbox' },
-    { src: '/search.webm', fallbackSrc: '/search.mp4', label: 'Search' },
-  ]}
-  onActiveScreen={setActive}
+  screen={{ src: '/demo.webm', fallbackSrc: '/demo.mp4' }}
 />
 ```
 
@@ -62,15 +58,19 @@ Every beat is a `[start, end]` pair on 0–1 scroll progress, and every one is o
 
 | Beat | Default | What happens |
 | --- | --- | --- |
-| `deviceIn` | `0 → 0.25` | Device fades and rises into frame |
-| `lidOpen` | `0.45 → 0.62` | Lid rotates open; the screen wakes behind it |
-| `dive` | `0.58 → 0.73` | Camera dives in toward the display |
-| `screens` | `0.73 → 0.92` | Walkthrough — your screens crossfade in order |
-| `recede` | `0.92 → 1` | Pushes back so the whole laptop is visible at hand-off |
+| `deviceIn` | `0 → 0.18` | Device fades and rises into frame |
+| `lidOpen` | `0.24 → 0.48` | Lid rotates open, unhurried; the screen wakes behind it |
+| `dive` | `0.42 → 0.64` | Camera eases in toward the display |
+| *hold* | `0.64 → 0.74` | The gap before `recede` — the open MacBook plays its video while the user scrolls through it |
+| `recede` | `0.74 → 0.87` | Pushes back so the whole laptop is visible again |
+| *settle* | `0.87 → 1` | The tail after `recede` — the device rests, fully composed, before the page scrolls on |
 
-Pass `timeline`, `poses`, or `feel` to override any of it; anything you leave out keeps the
-tuned default. [`demo/src/Journey.tsx`](https://github.com/william-laverty/rigged-macbook-3d/blob/main/demo/src/Journey.tsx)
-is the complete tab-bar-driven example.
+Make the hold longer or shorter by moving `recede`, or give the whole journey more scroll room
+with `height`. The settle is generous on purpose: the damped follow trails raw scroll, so the
+pushback needs that runway to finish and rest before the pin releases — trim it and a quick
+scroll will carry the exit into the page's own motion. Pass `timeline`, `poses`, or `feel` to override any of it; anything you leave out
+keeps the tuned default. [`demo/src/Journey.tsx`](https://github.com/william-laverty/rigged-macbook-3d/blob/main/demo/src/Journey.tsx)
+is the complete example.
 
 ## The four components
 
@@ -96,17 +96,14 @@ spring, a Framer Motion value.
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `open` | `number` | `1` | Lid amount: 0 = closed, 1 = fully open. Linear — apply your own easing. |
-| `screen` | `ScreenInput` | — | Single screen content (sugar for `screens={[screen]}`). |
-| `screens` | `ScreenInput[]` | — | Screen playlist; crossfade between entries with `screenIndex`/`screenMix`. |
-| `screenIndex` | `number` | `0` | Active playlist entry. |
-| `screenMix` | `number` | `0` | 0–1 crossfade from `screenIndex` toward `screenIndex + 1`. Raw — apply your own easing. |
+| `screen` | `ScreenInput` | — | Screen content: a video URL, image URL, or ready `THREE.Texture`. |
 | `brightness` | `number` | `1` | Screen wake: 0 = black, 1 = full. |
-| `autoPlayScreens` | `boolean` | `true` | Play/pause videos so only visible entries decode (paused while the lid is shut). |
+| `autoPlay` | `boolean` | `true` | Play/pause the screen video so it only decodes while visible (paused while the lid is shut). |
 | `modelSrc` | `string` | — | Self-hosting escape hatch — see [The model](#good-to-know) below. |
 | `onLoad` | `() => void` | — | Fires once the model is rigged and ready. |
-| `frameDriver` | `() => MacbookFrameState` | — | Per-frame state source, called inside the render loop. Returned fields (`open`, `brightness`, `screenIndex`, `screenMix`) override the matching props — drive the model without re-rendering React. |
+| `frameDriver` | `() => MacbookFrameState` | — | Per-frame state source, called inside the render loop. Returned fields (`open`, `brightness`) override the matching props — drive the model without re-rendering React. |
 
-A `ScreenInput` is a URL string, a `THREE.Texture`, or `{ src, type?, fallbackSrc?, label? }`.
+A `ScreenInput` is a URL string, a `THREE.Texture`, or `{ src, type?, fallbackSrc? }`.
 Video vs image is sniffed from the extension unless you set `type`.
 
 `<Macbook>` also takes every prop an R3F `<group>` takes (`position`, `rotation`, `scale`, …) and
@@ -151,20 +148,19 @@ you can override `camera`, `dpr`, `gl`, and the rest.
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `screens` | `(string \| ScreenSource)[]` | — | The walkthrough content, in order. |
+| `screen` | `string \| ScreenSource` | — | The video (or image) that plays on the screen once the lid opens. |
 | `height` | `string` | `'600vh'` | Total scroll length of the pinned journey. |
 | `lighting` | `LightingPreset` | `'studio-dark'` | Lighting preset. |
 | `timeline` | `Partial<Timeline>` | — | Override any journey beats. |
 | `poses` | `PosesPartial` | — | Override the intro / dive / outro poses. |
-| `feel` | `Partial<Feel>` | — | Tune the damped follow: smooth time, max speed, per-screen dwell, crossfade fraction. |
+| `feel` | `Partial<Feel>` | — | Tune the damped follow: smooth time, max speed. |
 | `pointerParallax` | `boolean` | `true` | Cursor-follow tilt once dived in. |
 | `fallback` | `ReactNode` | `null` | Rendered instead of the journey without WebGL2, or under reduced motion. |
 | `modelSrc` | `string` | — | Self-hosting escape hatch. |
 | `onProgress` | `(p: number) => void` | — | Fires with the smoothed 0–1 progress. |
-| `onActiveScreen` | `(index: number) => void` | — | Fires when the dominant screen changes — drive tab bars and captions from this. |
 | `children` | `ReactNode` | — | Overlay content, rendered inside the sticky viewport above the canvas. |
 
-The forwarded ref exposes `scrollToScreen(index)` and a read-only `progress` getter.
+The forwarded ref exposes a read-only `progress` getter.
 
 </details>
 
@@ -176,10 +172,8 @@ The forwarded ref exposes `scrollToScreen(index)` and a read-only `progress` get
 | Export | What it does |
 | --- | --- |
 | `useCapabilityGate()` | `boolean \| null` — should this client get 3D? (WebGL2 + not reduced-motion). `null` on first render, so it's SSR-safe. |
-| `useScreenTextures(sources)` | Turns URLs and textures into an index-aligned `THREE.Texture[]`, with `setPlaying`/`pauseAll` to control video decode. |
+| `useScreenTexture(source)` | Turns a URL or texture into a `THREE.Texture`, with `setPlaying` to control video decode. |
 | `journeyState(...)` | The pure progress → frame-state mapping. Call it yourself to keep DOM overlays in exact sync with the 3D scene. |
-| `screenAt(...)` | Where the walkthrough is at a given progress: current index, next index, raw blend. |
-| `speedCapAt(...)` | Per-frame speed cap for the damped follow. |
 | `ramp`, `easeInOut`, `lerp`, `clamp01`, `smoothDamp` | The math the journey is built from. |
 | `DEFAULT_TIMELINE`, `DEFAULT_POSES`, `DEFAULT_FEEL`, … | The tuned defaults, plus `resolveTimeline`/`resolvePoses`/`resolveFeel` to merge over them. |
 

@@ -1,20 +1,22 @@
 import type * as THREE from 'three';
 
-/** One entry of screen content. Strings are sniffed by extension (mp4/webm/mov/m4v → video). */
+/** Described screen content. Strings are sniffed by extension (mp4/webm/mov/m4v → video). */
 export interface ScreenSource {
   src: string;
   /** Force the kind when the extension is ambiguous (e.g. extensionless CDN URLs). */
   type?: 'video' | 'image';
   /** Optional fallback (e.g. mp4 for a webm) tried if `src` fails to load/decode. Applies to video sources only. */
   fallbackSrc?: string;
-  /** Optional display label — surfaced by MacbookScroll's onActiveScreen consumers. */
-  label?: string;
 }
 
 /** Anything the screen can show: a URL, a described source, or a ready THREE.Texture. */
 export type ScreenInput = string | ScreenSource | THREE.Texture;
 
-/** Named beats of the scroll journey, each a [start, end] pair on 0–1 progress. */
+/**
+ * Named beats of the scroll journey, each a [start, end] pair on 0–1 progress.
+ * The gap between `dive` end and `recede` start is the hold — the open MacBook
+ * sits front and centre playing its video while the user scrolls through it.
+ */
 export interface Timeline {
   /** Device fades/rises in. */
   deviceIn: [number, number];
@@ -22,9 +24,11 @@ export interface Timeline {
   lidOpen: [number, number];
   /** Camera-relative dive: intro pose → dived-in pose. */
   dive: [number, number];
-  /** Screen walkthrough band (crossfades happen inside it). */
-  screens: [number, number];
-  /** Push-back so the whole laptop is visible at hand-off. */
+  /**
+   * Push-back so the whole laptop is visible again. End it before 1 — the
+   * remaining tail is the settle, where the receded device holds still for a
+   * beat before the pin releases and the page scrolls on.
+   */
   recede: [number, number];
 }
 
@@ -49,12 +53,8 @@ export interface Poses {
 export interface Feel {
   /** Seconds — follow time of the damped scrub; higher = floatier. */
   smoothTime: number;
-  /** Progress/second — cap on playback speed outside the screens band. */
+  /** Progress/second — cap on playback speed so a full-page fling stays fluid. */
   maxSpeed: number;
-  /** Minimum seconds each screen's band takes to cross at full fling. */
-  screenMinSeconds: number;
-  /** Fraction of each screen band spent crossfading into the next (0–1). */
-  crossfadeFraction: number;
 }
 
 /** Built-in lighting presets. */

@@ -12,9 +12,9 @@ The repo is both the library and its showcase; only `dist/`, `assets/macbook-rig
 ## Commands
 
 ```bash
-npm test                              # vitest run (4 files, pure-logic units)
+npm test                              # vitest run (3 files, pure-logic units)
 npx vitest run tests/journey.test.ts  # single file
-npx vitest run -t "speedCapAt"        # single test/describe by name
+npx vitest run -t "journeyState"      # single test/describe by name
 npx vitest                            # watch mode
 npm run typecheck                     # tsc --noEmit over src + tests
 npm run build                         # tsup → dist/ (ESM + CJS + d.ts)
@@ -37,13 +37,13 @@ because the linked package would otherwise pull a second copy of each.
 
 Four layers, each independently useful and each depending only on the ones below it:
 
-1. **Pure logic** (`math.ts`, `screenAt.ts`, `journey.ts`, `constants.ts`, `types.ts`) — no React,
-   no three.js. `journeyState(p, timeline, poses, count, crossfadeFraction)` is the single
-   deterministic mapping from 0–1 scroll progress to a whole frame's worth of state
-   (`deviceIn`, `open`, `brightness`, `pose`, `screenIndex`, `screenMix`). The 3D scene, the DOM
-   overlay, and any consumer all call it and therefore agree by construction. **This layer is the
-   only one under test** — `tests/` is node-environment vitest with no DOM or WebGL harness.
-2. **Hooks** (`useScreenTextures.ts`, `useCapabilityGate.ts`) — video/image/Texture → `THREE.Texture`
+1. **Pure logic** (`math.ts`, `journey.ts`, `constants.ts`, `types.ts`) — no React, no three.js.
+   `journeyState(p, timeline, poses)` is the single deterministic mapping from 0–1 scroll
+   progress to a whole frame's worth of state (`deviceIn`, `open`, `brightness`, `pose`). The 3D
+   scene, the DOM overlay, and any consumer all call it and therefore agree by construction.
+   **This layer is the only one under test** — `tests/` is node-environment vitest with no DOM
+   or WebGL harness.
+2. **Hooks** (`useScreenTexture.ts`, `useCapabilityGate.ts`) — video/image/Texture → `THREE.Texture`
    with imperative play/pause, and the WebGL2 + `prefers-reduced-motion` gate (returns `null` on
    first render for SSR safety, and only ever downgrades).
 3. **`<Macbook>`** — the headless controlled core. Renders exactly what its props describe inside
@@ -57,9 +57,8 @@ Four layers, each independently useful and each depending only on the ones below
 The animation path deliberately avoids React re-renders. `MacbookScroll` keeps progress, pointer,
 resolved config, and consumer callbacks in refs (`progressRef`, `pointerRef`, `configRef`,
 `callbacksRef`), reassigning `.current` on every render. The rAF effect depends only on `capable`,
-so inline object props (`timeline`/`poses`/`feel`) and parent re-renders (commonly triggered by the
-consumer's own `onActiveScreen` → `setState`) can't tear down the loop, reset velocity, or re-prime
-progress mid-scroll. `Macbook`'s `frameDriver` prop is the same idea exposed publicly: a function
+so inline object props (`timeline`/`poses`/`feel`) and parent re-renders can't tear down the loop,
+reset velocity, or re-prime progress mid-scroll. `Macbook`'s `frameDriver` prop is the same idea exposed publicly: a function
 called inside `useFrame` whose returned fields override the matching props each frame.
 
 **When adding a tuning knob or callback to `MacbookScroll`, put it in `configRef`/`callbacksRef`
@@ -75,7 +74,7 @@ Two non-obvious details in there, both load-bearing:
 
 - **Per-instance clone, and deliberately not `useMemo`.** `useGLTF` hands every caller the same
   cached scene, but an `Object3D` can only have one parent, so each `<Macbook>` deep-clones it.
-  `rigModel` is not idempotent (each call mints fresh screen materials), and StrictMode
+  `rigModel` is not idempotent (each call mints a fresh screen material), and StrictMode
   double-invokes memo factories while discarding one result — which would leave the frame loop
   driving materials that aren't on the mounted mesh (permanently black screen). It uses a
   `useRef` + identity check instead.
@@ -123,6 +122,4 @@ the default URL points at a version that doesn't resolve until that version is p
 ## Reference docs
 
 `docs/specs/2026-08-20-rigged-macbook-3d-design.md` holds the locked design decisions, including
-what is deliberately *not* in the package (scroll clamping, idle autoplay, a 2D fallback component,
-the tab bar — that one lives in `demo/src/TabBar.tsx` as copy-paste example code).
-`docs/plans/2026-08-20-rigged-macbook-3d.md` is the completed build plan.
+what is deliberately *not* in the package (scroll clamping, idle autoplay, a 2D fallback component).

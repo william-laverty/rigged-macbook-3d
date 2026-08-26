@@ -9,9 +9,9 @@
 
 A React/three.js component library providing a **genuinely rigged 3D MacBook**: a real GLB
 model whose lid opens and closes on a working hinge, whose screen displays arbitrary
-video/image/texture content with built-in crossfading, with hand-tuned studio lighting
-presets — plus an optional zero-dependency scroll driver that recreates the NOX homepage's
-pinned scroll journey (intro pose → lid open → camera dive → screen walkthrough → recede).
+video/image/texture content, with hand-tuned studio lighting presets — plus an optional
+zero-dependency scroll driver for a pinned scroll journey (intro pose → lid open → camera
+dive → hold on the playing video → recede → settle, handing scroll back to the page).
 
 This is explicitly NOT another CSS-transform "MacBook scroll" image mockup. The
 differentiator is the rig: consumers can animate lid angle, placement, rotation, lighting,
@@ -24,8 +24,8 @@ and screen content however they choose, in any R3F scene.
 | Shape | npm package + demo site in one repo |
 | Name | npm `rigged-macbook-3d`; GitHub `williamlaverty/rigged-macbook-3d` |
 | API style | Headless controlled core + optional scroll driver |
-| In package | Rigged model, lighting presets, screen crossfade playlist, scroll driver |
-| Demo-only (not in package) | Tab bar (as example code), NOX typewriter headline, icon wave strip, scroll gate/clamp, idle autoplay |
+| In package | Rigged model, lighting presets, video/image screen, scroll driver |
+| Demo-only (not in package) | NOX typewriter headline, icon wave strip, scroll gate/clamp, idle autoplay |
 | Model | Bundled, fixed, NOT swappable for other models (rig is welded to this geometry). `modelSrc` prop exists only to self-host the same file. |
 | Rigging | Pre-baked offline into the shipped GLB via gltf-transform (see §5), adapted from nox-website PR #303's proven bake pipeline |
 | Dependencies | `three`, `@react-three/fiber` (peers), `@react-three/drei` (dep). No GSAP, no Lenis. |
@@ -45,12 +45,9 @@ An R3F component; requires an ancestor `<Canvas>` (any existing scene, or `<Macb
 ```tsx
 <Macbook
   open={0.8}                       // 0 = closed, 1 = fully open (default 1)
-  screen="/demo.mp4"               // single source: video URL, image URL, or THREE.Texture
-  screens={[srcA, srcB, srcC]}     // OR playlist for crossfade
-  screenIndex={1}                  // active playlist entry (default 0)
-  screenMix={0.3}                  // 0–1 crossfade toward screenIndex+1 (default 0)
+  screen="/demo.mp4"               // video URL, image URL, or THREE.Texture
   brightness={1}                   // screen wake: 0 black → 1 full (default 1)
-  autoPlayScreens                  // videos: only visible entries decode; rest paused (default true)
+  autoPlay                         // video only decodes while visible; paused otherwise (default true)
   modelSrc={optionalSelfHostUrl}   // same file only, copied from the package
   onLoad={() => {}}
 />
@@ -60,13 +57,11 @@ An R3F component; requires an ancestor `<Canvas>` (any existing scene, or `<Macb
   group — 3D placement is plain three.js, no custom API.
 - `open` maps to hinge angle between the model's CLOSED/OPEN poses with the dynamic
   seat-lift applied (see §5.3) so the closed lid never clips the keyboard.
-- `screen`/`screens` entries: string URLs (extension-sniffed video vs image, with explicit
+- `screen`: a string URL (extension-sniffed video vs image, with explicit
   `{ src, type }` object form) or pre-made `THREE.Texture`.
-- Crossfade uses the coplanar overlay-mesh technique from the NOX implementation
-  (`overMat.opacity = mix`, `polygonOffset`, `depthWrite: false`, `renderOrder 2`).
-- Video handling ports `useScreenVideos`: detached muted looping `<video>` elements →
-  `THREE.VideoTexture` (SRGB, linear filters, no mipmaps), first entry `preload="auto"`,
-  rest `metadata`; imperative play/pause so only on-screen entries decode.
+- Video handling: a detached muted looping `<video>` element →
+  `THREE.VideoTexture` (SRGB, linear filters, no mipmaps), `preload="auto"`;
+  imperative play/pause so the video only decodes while visible.
 - Model is normalised (recentered, fit to a known world size ~4.2 units) so consumer
   scale/position math is predictable and documented.
 
@@ -98,38 +93,36 @@ management: pauses when off-screen via IntersectionObserver (prop-disableable).
 
 ### 3.4 `<MacbookScroll>` — optional scroll journey driver
 
-Recreates the NOX pinned journey with zero added dependencies: a tall wrapper div +
-`position: sticky` child (no GSAP pin, no pin-spacer DOM surgery), scrollY mapped to raw
-progress, then the critically-damped `smoothDamp` follow with per-phase speed caps run in
-a rAF loop. Everything renders from the smoothed value, so choppy wheel input becomes
-fluid motion and reversal is exact.
+A pinned journey with zero added dependencies: a tall wrapper div + `position: sticky`
+child (no GSAP pin, no pin-spacer DOM surgery), scrollY mapped to raw progress, then the
+critically-damped `smoothDamp` follow run in a rAF loop. Everything renders from the
+smoothed value, so choppy wheel input becomes fluid motion and reversal is exact. Two gaps
+in the timeline are deliberate rests: between the dive's end and recede's start is the hold
+(the open MacBook plays its video front and centre while the user keeps scrolling), and
+after recede's end is the settle (the pushed-back device rests a beat before the pin
+releases and the page scrolls on).
 
 ```tsx
 <MacbookScroll
   height="600vh"                                    // pin length
-  screens={[{ src: '/inbox.webm', fallbackSrc: '/inbox.mp4', label: 'Inbox' }, …]}
+  screen={{ src: '/demo.webm', fallbackSrc: '/demo.mp4' }}
   lighting="studio-dark"
   timeline={{                                       // named beats, 0–1, all optional
-    deviceIn: [0, 0.25],                            // fade/rise in, intro pose
-    lidOpen: [0.45, 0.62],
-    dive: [0.58, 0.73],                             // overlaps lid-open tail by design
-    screens: [0.73, 0.92],                          // walkthrough band (crossfades inside)
-    recede: [0.92, 1],
+    deviceIn: [0, 0.18],                            // fade/rise in, intro pose
+    lidOpen: [0.24, 0.48],
+    dive: [0.42, 0.64],                             // overlaps lid-open tail by design
+    recede: [0.74, 0.87],                           // 0.64–0.74 gap = hold; 0.87–1 tail = settle
   }}
   poses={{ intro: { yaw: -0.5, pitch: 0.32, scale: 0.62, y: 0.25 },   // FRAME defaults
            dive:  { yaw: 0, pitch: 0.05, scale: 1.0, y: 0.05 },
            outro: { scale: 0.68, y: 0.05 } }}
-  feel={{ smoothTime: 0.33, maxSpeed: 0.42,          // SCROLL defaults
-          screenMinSeconds: 0.6, crossfadeFraction: 0.4 }}
+  feel={{ smoothTime: 0.45, maxSpeed: 0.5 }}         // SCROLL defaults
   pointerParallax                                    // cursor tilt after the dive (default true)
   onProgress={(p) => {}}
-  onActiveScreen={(i) => {}}                         // for consumer-built tab bars etc.
 />
 ```
 
-- Default timeline/pose/feel values are the NOX-tuned constants from `data.ts`.
-- `onActiveScreen`/`onProgress` let consumers build overlays (tab bars, headlines) in
-  their own DOM; the demo shows a complete tab-bar example.
+- `onProgress` lets consumers sync overlays (headlines, captions) in their own DOM.
 - Built-in capability gate: when the client has no WebGL2 or `prefers-reduced-motion` is
   set, the component renders its `fallback` prop (default: nothing) instead of mounting
   the 3D scene. The gate re-evaluates live but only ever downgrades. Docs explain the
@@ -137,20 +130,19 @@ fluid motion and reversal is exact.
 
 ### 3.5 Also exported
 
-- `useScreenTextures(sources)` — the video/image texture hook, for advanced custom scenes.
+- `useScreenTexture(source)` — the video/image texture hook, for advanced custom scenes.
 - `math`: `ramp`, `easeInOut`, `lerp`, `clamp01`, `smoothDamp` (documented — they're
   useful for consumers syncing their own DOM overlays).
-- `screenAt(progress, count, band, crossfadeFraction)` — the walkthrough mapping
-  (generalised `demoAt`) so DOM overlays stay in lockstep with the 3D crossfade.
+- `journeyState(progress, timeline, poses)` — the pure progress → frame-state mapping so
+  DOM overlays stay in lockstep with the 3D scene.
 - All TypeScript types.
 
 ## 4. What is deliberately NOT in the package
 
 - Scroll gate / scroll clamping (`clampScroll`) — scroll-jacking is site-specific polish.
-- Idle autoplay through the walkthrough.
+- Idle autoplay through the journey.
 - Typewriter headline, iMessage bubble, platform icon wave — NOX-branded; the wave may
   become a future optional extra if requested.
-- Tab bar — demo example code instead (it's plain DOM driven by `onActiveScreen`).
 - 2D fallback component — the `fallback` prop + docs cover degradation; shipping a styled
   2D MacBook image component drags in brand-specific assets.
 
@@ -217,8 +209,8 @@ carry.
   responsibility to ease — the component maps `open` linearly; easing guidance in docs.
 - Dynamic seat-lift each frame: hold the screen's bottom edge at `SEAT_TARGET_Y` whenever
   bare rotation would drop it lower (exact port of the NOX math).
-- Screen: swap in `MeshBasicMaterial` (toneMapped false) + coplanar overlay for crossfade;
-  `brightness` drives `baseMat.color.setScalar`.
+- Screen: swap in `MeshBasicMaterial` (toneMapped false); `brightness` drives
+  `screenMat.color.setScalar`.
 
 ### 5.4 Asset delivery
 
@@ -239,7 +231,7 @@ rigged-macbook-3d/
 │   ├── MacbookLighting.tsx
 │   ├── MacbookStage.tsx
 │   ├── MacbookScroll.tsx
-│   ├── useScreenTextures.ts
+│   ├── useScreenTexture.ts
 │   ├── math.ts
 │   └── constants.ts
 ├── assets/
@@ -250,7 +242,7 @@ rigged-macbook-3d/
 │   ├── src/ (journey page + playground page with sliders)
 │   └── public/ (NOX demo videos)
 ├── docs/specs/               # this document
-├── tests/ (vitest: math, screenAt, prop mapping)
+├── tests/ (vitest: math, journey, timeline resolution)
 ├── README.md  CREDITS.md  LICENSE  llms.txt  CHANGELOG.md
 ├── package.json  tsup.config.ts
 ```
@@ -262,8 +254,8 @@ rigged-macbook-3d/
   "CREDITS.md", "LICENSE"]` (the Draco source GLB stays repo-only).
 - **Peers:** `react >= 18`, `three >= 0.160`, `@react-three/fiber >= 8`.
   `@react-three/drei` regular dependency.
-- **Tests:** vitest units for `math.ts`, `screenAt`, timeline resolution, and prop→state
-  mapping. Visual: demo screenshots via the local Playwright workflow before publish.
+- **Tests:** vitest units for `math.ts`, `journeyState`, and timeline resolution.
+  Visual: demo screenshots via the local Playwright workflow before publish.
 - **Demo deploy:** Vercel (separate project), README links to it.
 - **Publish flow:** build → tests → visually verify demo (local GLB path) → create GitHub
   repo + push → `npm publish` v0.1.0 (verify npm login first) → verify CDN GLB URL

@@ -1,10 +1,10 @@
-import { forwardRef, useContext, useEffect, useMemo, useRef } from 'react';
+import { forwardRef, useContext, useEffect, useRef } from 'react';
 import { useFrame, type ThreeElements } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { DEFAULT_MODEL_URL, LID, SEAT, FIT_SIZE } from './constants';
 import { clamp01 } from './math';
-import { useScreenTextures } from './useScreenTextures';
+import { useScreenTexture } from './useScreenTexture';
 import { StageActiveContext } from './MacbookStage';
 import type { ScreenInput } from './types';
 
@@ -12,31 +12,23 @@ import type { ScreenInput } from './types';
 export interface MacbookFrameState {
   open?: number;
   brightness?: number;
-  screenIndex?: number;
-  screenMix?: number;
 }
 
 export type MacbookProps = ThreeElements['group'] & {
   /** Lid amount: 0 = closed, 1 = fully open. Linear — apply your own easing. Default 1. */
   open?: number;
-  /** Single screen content (sugar for `screens={[screen]}`). */
+  /** Screen content: a video URL, image URL, or ready THREE.Texture. */
   screen?: ScreenInput;
-  /** Screen playlist; crossfade between entries with screenIndex/screenMix. */
-  screens?: ScreenInput[];
-  /** Active playlist entry. Default 0. */
-  screenIndex?: number;
-  /** 0–1 crossfade from screenIndex toward screenIndex + 1. Raw — apply your own easing. Default 0. */
-  screenMix?: number;
   /** Screen wake: 0 = black, 1 = full. Default 1. */
   brightness?: number;
-  /** Auto play/pause videos so only visible entries decode (paused while the lid is shut). Default true. */
-  autoPlayScreens?: boolean;
+  /** Auto play/pause the screen video so it only decodes while visible (paused while the lid is shut). Default true. */
+  autoPlay?: boolean;
   /**
    * Self-hosting escape hatch. Must be THIS package's `assets/macbook-rigged.glb`
    * (copy it from node_modules) — the rig is welded to that file; other models throw.
    */
   modelSrc?: string;
-  /** Called once the model is rigged and ready. Screen textures may still be loading at this point. */
+  /** Called once the model is rigged and ready. The screen texture may still be loading at this point. */
   onLoad?: () => void;
   /**
    * Advanced: per-frame state source, called inside the render loop. Returned
@@ -48,15 +40,14 @@ export type MacbookProps = ThreeElements['group'] & {
 
 interface Rig {
   pivot: THREE.Object3D;
-  baseMat: THREE.MeshBasicMaterial;
-  overMat: THREE.MeshBasicMaterial;
+  screenMat: THREE.MeshBasicMaterial;
   offset: [number, number, number];
   scale: number;
   seat: { hingeY: number; hingeZ: number; relY: number; relZ: number; targetY: number; openX: number; closedX: number };
 }
 
 /**
- * Clones the loaded model and wires the hinge pivot, screen materials and fit
+ * Clones the loaded model and wires the hinge pivot, screen material and fit
  * transform onto the clone. `useGLTF` hands every caller the same cached scene,
  * but an Object3D can only live under one parent — two <Macbook>s sharing a
  * modelSrc would tug it back and forth and leave one of them empty. Geometries
@@ -82,21 +73,8 @@ function rigModel(source: THREE.Object3D): { scene: THREE.Object3D; rig: Rig } {
     );
   }
 
-  const baseMat = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false });
-  const overMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0,
-    toneMapped: false,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
-  });
-  screenMesh.material = baseMat;
-  const overlay = new THREE.Mesh(screenMesh.geometry, overMat);
-  overlay.renderOrder = 2;
-  screenMesh.add(overlay);
+  const screenMat = new THREE.MeshBasicMaterial({ color: 0x000000, toneMapped: false });
+  screenMesh.material = screenMat;
 
   // envMapIntensity is a three.js-only property glTF can't carry — the bake
   // tags the recoloured Space-Black materials; finish them here.
@@ -135,7 +113,7 @@ function rigModel(source: THREE.Object3D): { scene: THREE.Object3D; rig: Rig } {
 
   return {
     scene,
-    rig: { pivot, baseMat, overMat, offset: [-c.x, -c.y, -c.z], scale: FIT_SIZE / maxDim, seat },
+    rig: { pivot, screenMat, offset: [-c.x, -c.y, -c.z], scale: FIT_SIZE / maxDim, seat },
   };
 }
 
@@ -149,11 +127,8 @@ export const Macbook = forwardRef<THREE.Group, MacbookProps>(function Macbook(
   {
     open = 1,
     screen,
-    screens,
-    screenIndex = 0,
-    screenMix = 0,
     brightness = 1,
-    autoPlayScreens = true,
+    autoPlay = true,
     modelSrc,
     onLoad,
     frameDriver,
@@ -165,20 +140,16 @@ export const Macbook = forwardRef<THREE.Group, MacbookProps>(function Macbook(
   const { scene: sourceScene } = useGLTF(url);
   // Lazy per-instance init, deliberately not useMemo: StrictMode double-invokes
   // memo factories and discards one result, and rigModel is not idempotent —
-  // every call mints a fresh clone and fresh screen materials. Committing one
+  // every call mints a fresh clone and a fresh screen material. Committing one
   // call's rig alongside another call's scene leaves the frame loop driving
-  // materials that are not on the mounted mesh (a permanently black screen).
+  // a material that is not on the mounted mesh (a permanently black screen).
   const built = useRef<{ source: THREE.Object3D; value: ReturnType<typeof rigModel> } | null>(null);
   if (built.current?.source !== sourceScene) {
     built.current = { source: sourceScene, value: rigModel(sourceScene) };
   }
   const { scene, rig } = built.current.value;
 
-  const sources = useMemo<ScreenInput[]>(
-    () => screens ?? (screen !== undefined ? [screen] : []),
-    [screens, screen],
-  );
-  const { texturesRef, ready, setPlaying, pauseAll } = useScreenTextures(sources);
+  const { textureRef, ready, setPlaying } = useScreenTexture(screen);
 
   useEffect(() => {
     onLoad?.();
@@ -191,76 +162,53 @@ export const Macbook = forwardRef<THREE.Group, MacbookProps>(function Macbook(
   // through useFrame's setPlaying once the stage wakes and frames resume.
   const stageActive = useContext(StageActiveContext);
   useEffect(() => {
-    if (!stageActive) pauseAll();
-  }, [stageActive, pauseAll]);
+    if (!stageActive) setPlaying(false);
+  }, [stageActive, setPlaying]);
 
-  // Dispose the per-instance screen materials on unmount — geometry and
-  // textures are shared/owned elsewhere, but baseMat/overMat are minted fresh
-  // per <Macbook> instance in rigModel() and belong to this instance alone.
+  // Dispose the per-instance screen material on unmount — geometry and the
+  // texture are shared/owned elsewhere, but screenMat is minted fresh per
+  // <Macbook> instance in rigModel() and belongs to this instance alone.
   useEffect(() => {
-    const { baseMat, overMat } = rig;
+    const { screenMat } = rig;
     return () => {
-      baseMat.dispose();
-      overMat.dispose();
+      screenMat.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rig]);
 
   // Latest props, readable from the frame loop without re-subscribing.
-  const propsRef = useRef({ open, brightness, screenIndex, screenMix, autoPlayScreens });
-  propsRef.current = { open, brightness, screenIndex, screenMix, autoPlayScreens };
-
-  const playing = useRef<Set<number>>(new Set());
+  const propsRef = useRef({ open, brightness, autoPlay });
+  propsRef.current = { open, brightness, autoPlay };
 
   useFrame(() => {
     const p = propsRef.current;
     const d = frameDriver?.() ?? {};
     const openNow = clamp01(d.open ?? p.open);
     const brightNow = clamp01(d.brightness ?? p.brightness);
-    const idx = d.screenIndex ?? p.screenIndex;
-    const mix = clamp01(d.screenMix ?? p.screenMix);
 
     // Lid hinge + dynamic seat lift: hold the screen's bottom edge at targetY
     // whenever the bare rotation would drop it lower (no keyboard clipping).
-    const { pivot, baseMat, overMat, seat } = rig;
+    const { pivot, screenMat, seat } = rig;
     pivot.rotation.x = seat.closedX + (seat.openX - seat.closedX) * openNow;
     const theta = pivot.rotation.x;
     const screenBottomY = seat.hingeY + seat.relY * Math.cos(theta) - seat.relZ * Math.sin(theta);
     const lift = Math.max(0, seat.targetY - screenBottomY);
     pivot.position.y = seat.hingeY + lift;
 
-    baseMat.color.setScalar(brightNow);
+    screenMat.color.setScalar(brightNow);
 
-    const textures = texturesRef.current;
-    if (ready && textures.length > 0) {
-      const i = Math.min(Math.max(0, idx), textures.length - 1);
-      const nextI = Math.min(i + 1, textures.length - 1);
+    const texture = textureRef.current;
+    if (ready && texture) {
       // Swapping .map (incl. null→texture) toggles the USE_MAP shader define —
       // flag a recompile or the screen renders flat white.
-      if (baseMat.map !== textures[i]) {
-        baseMat.map = textures[i];
-        baseMat.needsUpdate = true;
+      if (screenMat.map !== texture) {
+        screenMat.map = texture;
+        screenMat.needsUpdate = true;
       }
-      if (overMat.map !== textures[nextI]) {
-        overMat.map = textures[nextI];
-        overMat.needsUpdate = true;
-      }
-      overMat.opacity = nextI !== i ? mix : 0;
-
-      if (p.autoPlayScreens) {
-        const want = playing.current;
-        want.clear();
-        // Nothing decodes while the lid is (nearly) shut or the screen is dark.
-        if (openNow > 0.01 && brightNow > 0) {
-          want.add(i);
-          if (mix > 0 && nextI !== i) want.add(nextI);
-        }
-        setPlaying(want);
-      }
+      // Nothing decodes while the lid is (nearly) shut or the screen is dark.
+      if (p.autoPlay) setPlaying(openNow > 0.01 && brightNow > 0);
     }
   });
-
-  useEffect(() => () => pauseAll(), [pauseAll]);
 
   return (
     <group ref={ref} {...groupProps}>
