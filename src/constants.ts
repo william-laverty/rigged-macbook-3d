@@ -31,13 +31,16 @@ export const SEAT = {
 /** World size (max dimension) the model is normalised to. */
 export const FIT_SIZE = 4.2;
 
-/** Journey beat defaults (tuned on the NOX homepage). */
+/**
+ * Journey beat defaults. Dive deliberately overlaps the lid-open tail, and the
+ * 0.64–0.86 gap before recede is the hold: the open MacBook plays its video
+ * front and centre while the user keeps scrolling.
+ */
 export const DEFAULT_TIMELINE: Timeline = {
-  deviceIn: [0, 0.25],
-  lidOpen: [0.45, 0.62],
-  dive: [0.58, 0.73],
-  screens: [0.73, 0.92],
-  recede: [0.92, 1],
+  deviceIn: [0, 0.24],
+  lidOpen: [0.34, 0.54],
+  dive: [0.5, 0.64],
+  recede: [0.86, 1],
 };
 
 /** Journey pose defaults (tuned on the NOX homepage). */
@@ -47,12 +50,10 @@ export const DEFAULT_POSES: Poses = {
   outro: { scale: 0.68, y: 0.05 },
 };
 
-/** Scroll-feel defaults (tuned on the NOX homepage). */
+/** Scroll-feel defaults. */
 export const DEFAULT_FEEL: Feel = {
   smoothTime: 0.33,
-  maxSpeed: 0.42,
-  screenMinSeconds: 0.6,
-  crossfadeFraction: 0.4,
+  maxSpeed: 0.9,
 };
 
 /** Deep-partial Poses for ergonomic overrides. */

@@ -1,8 +1,8 @@
 # rigged-macbook-3d
 
 > React + three.js component library: a genuinely rigged 3D MacBook (openable lid on a
-> real hinge, video/image screen with crossfade, studio lighting presets, optional
-> zero-dependency scroll journey). Peer deps: react>=18, three>=0.160,
+> real hinge, video/image screen, studio lighting presets, optional zero-dependency
+> scroll journey). Peer deps: react>=18, three>=0.160,
 > @react-three/fiber>=8.18, @react-three/drei>=9.122.
 
 Install: npm i rigged-macbook-3d three @react-three/fiber @react-three/drei
@@ -22,12 +22,9 @@ function Macbook(props: MacbookProps & React.RefAttributes<THREE.Group>): JSX.El
 
 type MacbookProps = ThreeElements['group'] & {
   open?: number;               // 0=closed, 1=open. Linear. Default 1.
-  screen?: ScreenInput;        // sugar for screens={[screen]}
-  screens?: ScreenInput[];     // playlist; crossfade via screenIndex/screenMix
-  screenIndex?: number;        // default 0
-  screenMix?: number;          // 0-1 crossfade toward screenIndex+1, raw. Default 0.
+  screen?: ScreenInput;        // video URL, image URL, or ready THREE.Texture
   brightness?: number;         // 0=black, 1=full. Default 1.
-  autoPlayScreens?: boolean;   // default true; pauses videos while lid shut/dark
+  autoPlay?: boolean;          // default true; pauses the video while lid shut/dark
   modelSrc?: string;           // MUST be this package's assets/macbook-rigged.glb; other GLBs throw
   onLoad?: () => void;
   frameDriver?: () => MacbookFrameState; // per-frame override, read inside the render loop
@@ -36,8 +33,6 @@ type MacbookProps = ThreeElements['group'] & {
 interface MacbookFrameState {
   open?: number;
   brightness?: number;
-  screenIndex?: number;
-  screenMix?: number;
 }
 
 /** Lighting rigs tuned for the Space-Black MacBook. */
@@ -62,13 +57,13 @@ interface MacbookStageProps extends Omit<CanvasProps, 'children'> {
   children: ReactNode;
 }
 
-/** The full scroll journey (pin -> lid open -> dive -> screen walkthrough -> recede),
- * zero scroll-library dependencies. */
+/** The full scroll journey (pin -> lid open -> dive -> hold on the playing video ->
+ * recede and hand scroll back to the page), zero scroll-library dependencies. */
 function MacbookScroll(props: MacbookScrollProps & React.RefAttributes<MacbookScrollHandle>): JSX.Element;
 
 interface MacbookScrollProps {
-  screens: (string | ScreenSource)[];
-  height?: string;                    // default '600vh'
+  screen: string | ScreenSource;      // the video (or image) that plays once the lid opens
+  height?: string;                    // default '400vh'
   lighting?: LightingPreset;          // default 'studio-dark'
   timeline?: Partial<Timeline>;       // unspecified beats keep tuned defaults
   poses?: PosesPartial;               // unspecified values keep tuned defaults
@@ -78,46 +73,33 @@ interface MacbookScrollProps {
   className?: string;
   modelSrc?: string;                  // see Macbook.modelSrc
   onProgress?: (p: number) => void;
-  onActiveScreen?: (index: number) => void;
   children?: ReactNode;               // overlay content above the canvas, inside the sticky viewport
 }
 
 interface MacbookScrollHandle {
-  scrollToScreen(index: number): void; // smooth-scrolls the page to land on screen `index`
   readonly progress: number;           // current smoothed journey progress, 0-1
 }
 
 // --- Hooks & utilities ---
 
-function useScreenTextures(sources: ScreenInput[]): {
-  texturesRef: React.RefObject<(THREE.Texture | null)[]>;
+function useScreenTexture(source?: ScreenInput): {
+  textureRef: React.RefObject<THREE.Texture | null>;
   ready: boolean;
-  setPlaying: (indices: Set<number>) => void;
-  pauseAll: () => void;
+  setPlaying: (playing: boolean) => void;  // play/pause a video source; no-op otherwise
 };
 
 /** boolean | null (null on first render, SSR-safe). true iff WebGL2 is available and
  * prefers-reduced-motion is not set. Only ever downgrades true->false live. */
 function useCapabilityGate(): boolean | null;
 
-function screenAt(
-  p: number, count: number, band: [number, number], crossfadeFraction?: number,
-): { index: number; next: number; mix: number };
-
-function journeyState(
-  p: number, timeline: Timeline, poses: Poses, screenCount: number, crossfadeFraction: number,
-): JourneyState;
+function journeyState(p: number, timeline: Timeline, poses: Poses): JourneyState;
 
 interface JourneyState {
   deviceIn: number;   // 0-1 eased fade/rise-in
   open: number;        // 0-1 eased lid amount -> Macbook `open`
   brightness: number;  // 0-1 eased screen wake -> Macbook `brightness`
   pose: Pose;
-  screenIndex: number;
-  screenMix: number;
 }
-
-function speedCapAt(sp: number, timeline: Timeline, feel: Feel, screenCount: number): number;
 
 function ramp(p: number, a: number, b: number): number;       // 0->1 across [a,b], clamped
 function easeInOut(t: number): number;                        // cubic ease-in-out
@@ -147,15 +129,15 @@ interface ScreenSource {
   src: string;
   type?: 'video' | 'image';   // forces kind when the extension is ambiguous
   fallbackSrc?: string;       // tried if `src` fails to load/decode
-  label?: string;             // surfaced by MacbookScroll's onActiveScreen consumers
 }
 
 interface Timeline {
   deviceIn: [number, number];  // device fades/rises in
   lidOpen: [number, number];  // lid closed -> open; screen wakes across the back 80%
   dive: [number, number];     // camera-relative: intro pose -> dived-in pose
-  screens: [number, number];  // screen walkthrough band (crossfades happen inside it)
-  recede: [number, number];   // push-back so the whole laptop is visible at hand-off
+  recede: [number, number];   // push-back as scroll hands off to the page
+  // The gap between dive[1] and recede[0] is the hold: the open MacBook plays its
+  // video front and centre while the user keeps scrolling.
 }
 
 interface Pose { yaw: number; pitch: number; scale: number; x: number; y: number; }
@@ -172,9 +154,7 @@ interface PosesPartial {
 
 interface Feel {
   smoothTime: number;        // seconds; follow time of the damped scrub. Higher = floatier.
-  maxSpeed: number;          // progress/second cap outside the screens band
-  screenMinSeconds: number;  // minimum seconds each screen's band takes at full fling
-  crossfadeFraction: number; // 0-1 fraction of each screen band spent crossfading
+  maxSpeed: number;          // progress/second cap so a full-page fling stays fluid
 }
 
 type LightingPreset = 'studio-dark' | 'studio-light' | 'soft';
@@ -196,40 +176,26 @@ export default function Hero() {
 }
 ```
 
-## Canonical snippet 2: scroll journey with tab bar
+## Canonical snippet 2: scroll journey
 
 ```tsx
-import { useRef, useState } from 'react';
-import { MacbookScroll, type MacbookScrollHandle } from 'rigged-macbook-3d';
-
-const SCREENS = [
-  { src: '/videos/inbox1.webm', fallbackSrc: '/videos/inbox1.mp4', label: 'Inbox' },
-  { src: '/videos/replies1.webm', fallbackSrc: '/videos/replies1.mp4', label: 'Replies' },
-];
+import { MacbookScroll } from 'rigged-macbook-3d';
 
 export default function Journey() {
-  const scrollRef = useRef<MacbookScrollHandle>(null);
-  const [active, setActive] = useState(0);
-
   return (
     <MacbookScroll
-      ref={scrollRef}
-      height="600vh"
-      screens={SCREENS}
-      onActiveScreen={setActive}
+      height="400vh"
+      screen={{ src: '/videos/demo.webm', fallbackSrc: '/videos/demo.mp4' }}
       fallback={<div>Here's a quiet fallback instead.</div>}
-    >
-      <div role="tablist" aria-label="Screens">
-        {SCREENS.map((s, i) => (
-          <button key={s.label} role="tab" aria-selected={i === active} onClick={() => scrollRef.current?.scrollToScreen(i)}>
-            {s.label}
-          </button>
-        ))}
-      </div>
-    </MacbookScroll>
+    />
   );
 }
 ```
+
+The pinned journey: the device rises in closed, the lid opens onto the playing video, the
+camera dives in and holds there while the user keeps scrolling, then the device recedes and
+the page scrolls on. Lengthen the hold by moving `timeline.recede` later, or give the whole
+journey more scroll room with `height`.
 
 ## Canonical snippet 3: frameDriver binding (e.g. Framer Motion)
 
@@ -255,11 +221,10 @@ export default function HoverOpen() {
 ```json
 {
   "DEFAULT_TIMELINE": {
-    "deviceIn": [0, 0.25],
-    "lidOpen": [0.45, 0.62],
-    "dive": [0.58, 0.73],
-    "screens": [0.73, 0.92],
-    "recede": [0.92, 1]
+    "deviceIn": [0, 0.24],
+    "lidOpen": [0.34, 0.54],
+    "dive": [0.5, 0.64],
+    "recede": [0.86, 1]
   },
   "DEFAULT_POSES": {
     "intro": { "yaw": -0.5, "pitch": 0.32, "scale": 0.62, "x": 0, "y": 0.25 },
@@ -268,9 +233,7 @@ export default function HoverOpen() {
   },
   "DEFAULT_FEEL": {
     "smoothTime": 0.33,
-    "maxSpeed": 0.42,
-    "screenMinSeconds": 0.6,
-    "crossfadeFraction": 0.4
+    "maxSpeed": 0.9
   }
 }
 ```

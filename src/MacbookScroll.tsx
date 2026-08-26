@@ -1,5 +1,5 @@
 import {
-  forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState,
+  forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef,
   type ReactNode,
 } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -7,22 +7,20 @@ import type * as THREE from 'three';
 import { Macbook, type MacbookFrameState } from './Macbook';
 import { MacbookStage } from './MacbookStage';
 import { useCapabilityGate } from './useCapabilityGate';
-import { journeyState, speedCapAt } from './journey';
+import { journeyState } from './journey';
 import { resolveTimeline, resolvePoses, resolveFeel, type PosesPartial } from './constants';
 import { clamp01, smoothDamp } from './math';
 import type { ScreenSource, Timeline, Feel, LightingPreset } from './types';
 
 export interface MacbookScrollHandle {
-  /** Smooth-scroll the page so the journey lands on screen `index`. */
-  scrollToScreen(index: number): void;
   /** Current smoothed journey progress, 0–1. */
   readonly progress: number;
 }
 
 export interface MacbookScrollProps {
-  /** The screen walkthrough content, in order. */
-  screens: (string | ScreenSource)[];
-  /** Total scroll length of the pinned journey. Default '600vh'. */
+  /** The video (or image) that plays on the screen once the lid opens. */
+  screen: string | ScreenSource;
+  /** Total scroll length of the pinned journey. Default '400vh'. */
   height?: string;
   /** Lighting preset. Default 'studio-dark'. */
   lighting?: LightingPreset;
@@ -41,8 +39,6 @@ export interface MacbookScrollProps {
   modelSrc?: string;
   /** Fires with the smoothed progress whenever it changes. */
   onProgress?: (p: number) => void;
-  /** Fires when the dominant screen changes — drive tab bars/captions from this. */
-  onActiveScreen?: (index: number) => void;
   /** Overlay content rendered inside the sticky viewport, above the canvas. */
   children?: ReactNode;
 }
@@ -52,7 +48,6 @@ interface ResolvedConfig {
   timeline: Timeline;
   poses: ReturnType<typeof resolvePoses>;
   feel: Feel;
-  count: number;
 }
 
 /** Inner R3F component: drives pose + parallax per frame from the shared refs. */
@@ -69,9 +64,9 @@ function ScrollRig({
   useFrame(() => {
     const g = groupRef.current;
     if (!g) return;
-    const { timeline, poses, feel, count } = configRef.current;
+    const { timeline, poses } = configRef.current;
     const p = progressRef.current;
-    const s = journeyState(p, timeline, poses, count, feel.crossfadeFraction);
+    const s = journeyState(p, timeline, poses);
 
     // Parallax fades in with the dive; the device never moves unless the user does.
     const diveT = (s.pose.scale - poses.intro.scale) / (poses.dive.scale - poses.intro.scale || 1);
@@ -92,15 +87,17 @@ function ScrollRig({
 }
 
 /**
- * The full scroll journey (the NOX homepage effect) with zero scroll-library
- * dependencies: a tall wrapper pins a sticky viewport; scroll maps to a target
- * progress; a critically-damped follow (with per-phase speed caps) chases it,
- * so wheel steps become fluid motion and everything reverses exactly.
+ * The full scroll journey with zero scroll-library dependencies: a tall wrapper
+ * pins a sticky viewport; scroll maps to a target progress; a critically-damped
+ * follow chases it, so wheel steps become fluid motion and everything reverses
+ * exactly. The device rises in, the lid opens onto your playing video, the
+ * journey holds there while the user keeps scrolling, then the device recedes
+ * and scroll hands off to the rest of the page.
  */
 export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>(function MacbookScroll(
   {
-    screens,
-    height = '600vh',
+    screen,
+    height = '400vh',
     lighting = 'studio-dark',
     timeline: timelineIn,
     poses: posesIn,
@@ -110,7 +107,6 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
     className,
     modelSrc,
     onProgress,
-    onActiveScreen,
     children,
   },
   ref,
@@ -119,28 +115,25 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
   const timeline = useMemo(() => resolveTimeline(timelineIn), [timelineIn]);
   const poses = useMemo(() => resolvePoses(posesIn), [posesIn]);
   const feel = useMemo(() => resolveFeel(feelIn), [feelIn]);
-  const count = screens.length;
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const stageWrapRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0, active: false });
   const groupRef = useRef<THREE.Group | null>(null);
-  const [activeScreen, setActiveScreen] = useState(0);
-  const activeRef = useRef(0);
   // Latest callbacks, read from the rAF loop without tearing it down on every
   // parent re-render (consumers commonly pass inline arrows for these).
-  const callbacksRef = useRef({ onProgress, onActiveScreen });
-  callbacksRef.current = { onProgress, onActiveScreen };
+  const callbacksRef = useRef({ onProgress });
+  callbacksRef.current = { onProgress };
   // Latest resolved config, read from the rAF loop / useFrame / imperative
   // handle without tearing any of them down on identity churn — inline object
-  // props (timeline/poses/feel) and parent re-renders (e.g. induced by
-  // onActiveScreen → setState) would otherwise re-run the main effect below,
-  // resetting velocity and re-priming progress mid-scroll.
-  const configRef = useRef<ResolvedConfig>({ timeline, poses, feel, count });
-  configRef.current = { timeline, poses, feel, count };
+  // props (timeline/poses/feel) and parent re-renders would otherwise re-run
+  // the main effect below, resetting velocity and re-priming progress
+  // mid-scroll.
+  const configRef = useRef<ResolvedConfig>({ timeline, poses, feel });
+  configRef.current = { timeline, poses, feel };
   // Guards the deep-link prime so it only runs once, on first mount — not on
-  // every re-run of the main effect (which now only depends on `capable`).
+  // every re-run of the main effect (which only depends on `capable`).
   const primedRef = useRef(false);
 
   // Scroll → target; rAF chases it with the damped, speed-capped follow.
@@ -171,19 +164,14 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
     }
 
     const render = () => {
-      const { timeline, poses, feel, count } = configRef.current;
+      const { timeline, poses } = configRef.current;
       const sp = progressRef.current;
       // deviceIn fade/rise is DOM-side (opacity + translate on the stage wrapper).
-      const s = journeyState(sp, timeline, poses, count, feel.crossfadeFraction);
+      const s = journeyState(sp, timeline, poses);
       const el = stageWrapRef.current;
       if (el) {
         el.style.opacity = String(s.deviceIn);
         el.style.transform = `translateY(${56 * (1 - s.deviceIn)}px)`;
-      }
-      if (s.screenIndex !== activeRef.current) {
-        activeRef.current = s.screenIndex;
-        setActiveScreen(s.screenIndex);
-        callbacksRef.current.onActiveScreen?.(s.screenIndex);
       }
       callbacksRef.current.onProgress?.(sp);
     };
@@ -193,11 +181,10 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
       measure();
-      const { timeline, feel, count } = configRef.current;
+      const { feel } = configRef.current;
       const sp = progressRef.current;
       if (sp === target && vel.current === 0 && renderedAt === sp) return; // idle
-      const cap = speedCapAt(sp, timeline, feel, count);
-      let next = smoothDamp(sp, target, vel, feel.smoothTime, dt, cap);
+      let next = smoothDamp(sp, target, vel, feel.smoothTime, dt, feel.maxSpeed);
       if (Math.abs(next - target) < 1e-4 && Math.abs(vel.current) < 2e-3) {
         next = target;
         vel.current = 0;
@@ -225,17 +212,6 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
   useImperativeHandle(
     ref,
     () => ({
-      scrollToScreen(index: number) {
-        const wrapper = wrapperRef.current;
-        const { timeline, count } = configRef.current;
-        if (!wrapper || count === 0) return;
-        const rect = wrapper.getBoundingClientRect();
-        const top = rect.top + window.scrollY;
-        const len = wrapper.offsetHeight - window.innerHeight;
-        const [s0, s1] = timeline.screens;
-        const p = s0 + ((index + 0.5) / count) * (s1 - s0);
-        window.scrollTo({ top: top + p * len, behavior: 'smooth' });
-      },
       get progress() {
         return progressRef.current;
       },
@@ -244,9 +220,9 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
   );
 
   const frameDriver = useCallback((): MacbookFrameState => {
-    const { timeline, poses, feel, count } = configRef.current;
-    const s = journeyState(progressRef.current, timeline, poses, count, feel.crossfadeFraction);
-    return { open: s.open, brightness: s.brightness, screenIndex: s.screenIndex, screenMix: s.screenMix };
+    const { timeline, poses } = configRef.current;
+    const s = journeyState(progressRef.current, timeline, poses);
+    return { open: s.open, brightness: s.brightness };
   }, []);
 
   if (capable === null) return <div className={className} style={{ height }} />;
@@ -259,13 +235,12 @@ export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>
       style={{ position: 'relative', height }}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
-      data-active-screen={activeScreen}
     >
       <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}>
         <div ref={stageWrapRef} style={{ position: 'absolute', inset: 0, opacity: 0 }}>
           <MacbookStage lighting={lighting}>
             <group ref={groupRef}>
-              <Macbook screens={screens} frameDriver={frameDriver} modelSrc={modelSrc} />
+              <Macbook screen={screen} frameDriver={frameDriver} modelSrc={modelSrc} />
             </group>
             <ScrollRig
               groupRef={groupRef}

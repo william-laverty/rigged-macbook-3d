@@ -7,7 +7,6 @@ export default function Playground() {
   const [brightness, setBrightness] = useState(1);
   const [yaw, setYaw] = useState(-0.4);
   const [pitch, setPitch] = useState(0.15);
-  const [mix, setMix] = useState(0);
   const [lighting, setLighting] = useState<LightingPreset>('studio-dark');
 
   return (
@@ -21,12 +20,7 @@ export default function Playground() {
               modelSrc="/macbook-rigged.glb"
               open={open}
               brightness={brightness}
-              screens={[
-                { src: '/videos/inbox1.webm', fallbackSrc: '/videos/inbox1.mp4' },
-                { src: '/videos/replies1.webm', fallbackSrc: '/videos/replies1.mp4' },
-              ]}
-              screenIndex={0}
-              screenMix={mix}
+              screen={{ src: '/videos/demo.webm', fallbackSrc: '/videos/demo.mp4' }}
             />
           </group>
         </MacbookStage>
@@ -37,9 +31,6 @@ export default function Playground() {
         </label>
         <label>brightness: {brightness.toFixed(2)}
           <input type="range" min="0" max="1" step="0.01" value={brightness} onChange={(e) => setBrightness(+e.target.value)} />
-        </label>
-        <label>screenMix: {mix.toFixed(2)}
-          <input type="range" min="0" max="1" step="0.01" value={mix} onChange={(e) => setMix(+e.target.value)} />
         </label>
         <label>yaw: {yaw.toFixed(2)}
           <input type="range" min="-1.2" max="1.2" step="0.01" value={yaw} onChange={(e) => setYaw(+e.target.value)} />
