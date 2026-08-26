@@ -63,7 +63,7 @@ function MacbookScroll(props: MacbookScrollProps & React.RefAttributes<MacbookSc
 
 interface MacbookScrollProps {
   screen: string | ScreenSource;      // the video (or image) that plays once the lid opens
-  height?: string;                    // default '400vh'
+  height?: string;                    // default '500vh'
   lighting?: LightingPreset;          // default 'studio-dark'
   timeline?: Partial<Timeline>;       // unspecified beats keep tuned defaults
   poses?: PosesPartial;               // unspecified values keep tuned defaults
@@ -184,7 +184,7 @@ import { MacbookScroll } from 'rigged-macbook-3d';
 export default function Journey() {
   return (
     <MacbookScroll
-      height="400vh"
+      height="500vh"
       screen={{ src: '/videos/demo.webm', fallbackSrc: '/videos/demo.mp4' }}
       fallback={<div>Here's a quiet fallback instead.</div>}
     />
@@ -222,8 +222,8 @@ export default function HoverOpen() {
 {
   "DEFAULT_TIMELINE": {
     "deviceIn": [0, 0.24],
-    "lidOpen": [0.34, 0.54],
-    "dive": [0.5, 0.64],
+    "lidOpen": [0.3, 0.58],
+    "dive": [0.52, 0.7],
     "recede": [0.86, 1]
   },
   "DEFAULT_POSES": {
@@ -232,8 +232,8 @@ export default function HoverOpen() {
     "outro": { "scale": 0.68, "y": 0.05 }
   },
   "DEFAULT_FEEL": {
-    "smoothTime": 0.33,
-    "maxSpeed": 0.9
+    "smoothTime": 0.45,
+    "maxSpeed": 0.5
   }
 }
 ```

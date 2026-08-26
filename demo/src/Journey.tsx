@@ -4,7 +4,7 @@ import { MacbookScroll } from 'rigged-macbook-3d';
 export default function Journey() {
   return (
     <MacbookScroll
-      height="400vh"
+      height="500vh"
       screen={{ src: '/videos/demo.webm', fallbackSrc: '/videos/demo.mp4' }}
       modelSrc="/macbook-rigged.glb"
       fallback={

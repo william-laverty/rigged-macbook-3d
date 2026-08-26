@@ -103,19 +103,19 @@ rest of the page.
 
 ```tsx
 <MacbookScroll
-  height="400vh"                                    // pin length
+  height="500vh"                                    // pin length
   screen={{ src: '/demo.webm', fallbackSrc: '/demo.mp4' }}
   lighting="studio-dark"
   timeline={{                                       // named beats, 0–1, all optional
     deviceIn: [0, 0.24],                            // fade/rise in, intro pose
-    lidOpen: [0.34, 0.54],
-    dive: [0.5, 0.64],                              // overlaps lid-open tail by design
-    recede: [0.86, 1],                              // 0.64–0.86 gap = the hold
+    lidOpen: [0.3, 0.58],
+    dive: [0.52, 0.7],                              // overlaps lid-open tail by design
+    recede: [0.86, 1],                              // 0.7–0.86 gap = the hold
   }}
   poses={{ intro: { yaw: -0.5, pitch: 0.32, scale: 0.62, y: 0.25 },   // FRAME defaults
            dive:  { yaw: 0, pitch: 0.05, scale: 1.0, y: 0.05 },
            outro: { scale: 0.68, y: 0.05 } }}
-  feel={{ smoothTime: 0.33, maxSpeed: 0.9 }}         // SCROLL defaults
+  feel={{ smoothTime: 0.45, maxSpeed: 0.5 }}         // SCROLL defaults
   pointerParallax                                    // cursor tilt after the dive (default true)
   onProgress={(p) => {}}
 />

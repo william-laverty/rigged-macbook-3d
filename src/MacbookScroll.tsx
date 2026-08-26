@@ -20,7 +20,7 @@ export interface MacbookScrollHandle {
 export interface MacbookScrollProps {
   /** The video (or image) that plays on the screen once the lid opens. */
   screen: string | ScreenSource;
-  /** Total scroll length of the pinned journey. Default '400vh'. */
+  /** Total scroll length of the pinned journey. Default '500vh'. */
   height?: string;
   /** Lighting preset. Default 'studio-dark'. */
   lighting?: LightingPreset;
@@ -97,7 +97,7 @@ function ScrollRig({
 export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>(function MacbookScroll(
   {
     screen,
-    height = '400vh',
+    height = '500vh',
     lighting = 'studio-dark',
     timeline: timelineIn,
     poses: posesIn,

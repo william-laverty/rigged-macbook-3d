@@ -49,7 +49,7 @@ recedes and scroll hands off to the rest of the page. No GSAP, no Lenis, no scro
 import { MacbookScroll } from 'rigged-macbook-3d';
 
 <MacbookScroll
-  height="400vh"
+  height="500vh"
   screen={{ src: '/demo.webm', fallbackSrc: '/demo.mp4' }}
 />
 ```
@@ -59,9 +59,9 @@ Every beat is a `[start, end]` pair on 0–1 scroll progress, and every one is o
 | Beat | Default | What happens |
 | --- | --- | --- |
 | `deviceIn` | `0 → 0.24` | Device fades and rises into frame |
-| `lidOpen` | `0.34 → 0.54` | Lid rotates open; the screen wakes behind it |
-| `dive` | `0.5 → 0.64` | Camera dives in toward the display |
-| *hold* | `0.64 → 0.86` | The gap before `recede` — the open MacBook plays its video while the user scrolls through it |
+| `lidOpen` | `0.3 → 0.58` | Lid rotates open, unhurried; the screen wakes behind it |
+| `dive` | `0.52 → 0.7` | Camera dives in toward the display |
+| *hold* | `0.7 → 0.86` | The gap before `recede` — the open MacBook plays its video while the user scrolls through it |
 | `recede` | `0.86 → 1` | Pushes back so the whole laptop is visible at hand-off |
 
 Make the hold longer or shorter by moving `recede`, or give the whole journey more scroll room
@@ -146,7 +146,7 @@ you can override `camera`, `dpr`, `gl`, and the rest.
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `screen` | `string \| ScreenSource` | — | The video (or image) that plays on the screen once the lid opens. |
-| `height` | `string` | `'400vh'` | Total scroll length of the pinned journey. |
+| `height` | `string` | `'500vh'` | Total scroll length of the pinned journey. |
 | `lighting` | `LightingPreset` | `'studio-dark'` | Lighting preset. |
 | `timeline` | `Partial<Timeline>` | — | Override any journey beats. |
 | `poses` | `PosesPartial` | — | Override the intro / dive / outro poses. |

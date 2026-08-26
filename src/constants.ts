@@ -32,14 +32,15 @@ export const SEAT = {
 export const FIT_SIZE = 4.2;
 
 /**
- * Journey beat defaults. Dive deliberately overlaps the lid-open tail, and the
- * 0.64–0.86 gap before recede is the hold: the open MacBook plays its video
+ * Journey beat defaults. The lid gets over a quarter of the journey so it
+ * swings open unhurried, dive deliberately overlaps its tail, and the
+ * 0.7–0.86 gap before recede is the hold: the open MacBook plays its video
  * front and centre while the user keeps scrolling.
  */
 export const DEFAULT_TIMELINE: Timeline = {
   deviceIn: [0, 0.24],
-  lidOpen: [0.34, 0.54],
-  dive: [0.5, 0.64],
+  lidOpen: [0.3, 0.58],
+  dive: [0.52, 0.7],
   recede: [0.86, 1],
 };
 
@@ -50,10 +51,15 @@ export const DEFAULT_POSES: Poses = {
   outro: { scale: 0.68, y: 0.05 },
 };
 
-/** Scroll-feel defaults. */
+/**
+ * Scroll-feel defaults. The follow adapts to input velocity by construction:
+ * slow scrolls track closely, quick flicks are absorbed into one continuous
+ * glide, and `maxSpeed` keeps a full-page fling at a cinematic pace (a whole
+ * journey never plays faster than ~2s) instead of slamming the lid open.
+ */
 export const DEFAULT_FEEL: Feel = {
-  smoothTime: 0.33,
-  maxSpeed: 0.9,
+  smoothTime: 0.45,
+  maxSpeed: 0.5,
 };
 
 /** Deep-partial Poses for ergonomic overrides. */
