@@ -13,7 +13,7 @@ describe('journeyState', () => {
     expect(s.pose).toEqual(DEFAULT_POSES.intro);
   });
   it('is fully in, still closed, before the lid opens', () => {
-    const s = state(0.25);
+    const s = state(0.22);
     expect(s.deviceIn).toBe(1);
     expect(s.open).toBe(0);
   });
@@ -31,7 +31,7 @@ describe('journeyState', () => {
     expect(s.pose.scale).toBeCloseTo(DEFAULT_POSES.dive.scale);
   });
   it('holds the dive pose, open and bright, between dive end and recede start', () => {
-    const s = state(0.75);
+    const s = state(0.7);
     expect(s.open).toBe(1);
     expect(s.brightness).toBe(1);
     expect(s.pose.yaw).toBeCloseTo(DEFAULT_POSES.dive.yaw);

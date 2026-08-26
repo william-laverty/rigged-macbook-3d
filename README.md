@@ -58,15 +58,17 @@ Every beat is a `[start, end]` pair on 0–1 scroll progress, and every one is o
 
 | Beat | Default | What happens |
 | --- | --- | --- |
-| `deviceIn` | `0 → 0.2` | Device fades and rises into frame |
-| `lidOpen` | `0.26 → 0.52` | Lid rotates open, unhurried; the screen wakes behind it |
-| `dive` | `0.46 → 0.68` | Camera eases in toward the display |
-| *hold* | `0.68 → 0.8` | The gap before `recede` — the open MacBook plays its video while the user scrolls through it |
-| `recede` | `0.8 → 0.93` | Pushes back so the whole laptop is visible again |
-| *settle* | `0.93 → 1` | The tail after `recede` — the device rests a beat before the page scrolls on |
+| `deviceIn` | `0 → 0.18` | Device fades and rises into frame |
+| `lidOpen` | `0.24 → 0.48` | Lid rotates open, unhurried; the screen wakes behind it |
+| `dive` | `0.42 → 0.64` | Camera eases in toward the display |
+| *hold* | `0.64 → 0.74` | The gap before `recede` — the open MacBook plays its video while the user scrolls through it |
+| `recede` | `0.74 → 0.87` | Pushes back so the whole laptop is visible again |
+| *settle* | `0.87 → 1` | The tail after `recede` — the device rests, fully composed, before the page scrolls on |
 
-Make the hold longer or shorter by moving `recede`, adjust the settle by moving `recede`'s end,
-or give the whole journey more scroll room with `height`. Pass `timeline`, `poses`, or `feel` to override any of it; anything you leave out
+Make the hold longer or shorter by moving `recede`, or give the whole journey more scroll room
+with `height`. The settle is generous on purpose: the damped follow trails raw scroll, so the
+pushback needs that runway to finish and rest before the pin releases — trim it and a quick
+scroll will carry the exit into the page's own motion. Pass `timeline`, `poses`, or `feel` to override any of it; anything you leave out
 keeps the tuned default. [`demo/src/Journey.tsx`](https://github.com/william-laverty/rigged-macbook-3d/blob/main/demo/src/Journey.tsx)
 is the complete example.
 

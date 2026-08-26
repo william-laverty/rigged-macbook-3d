@@ -32,18 +32,20 @@ export const SEAT = {
 export const FIT_SIZE = 4.2;
 
 /**
- * Journey beat defaults. The lid gets over a quarter of the journey so it
- * swings open unhurried, dive deliberately overlaps its tail and takes its
- * time pulling in, and the two gaps are deliberate rests: 0.68–0.8 is the
- * hold (the open MacBook plays its video front and centre while the user
- * keeps scrolling), and 0.93–1 is the settle (the pushed-back device rests a
- * beat before the pin releases and the page scrolls on).
+ * Journey beat defaults. The lid gets a quarter of the journey so it swings
+ * open unhurried, dive deliberately overlaps its tail and takes its time
+ * pulling in, and the two gaps are deliberate rests: 0.64–0.74 is the hold
+ * (the open MacBook plays its video front and centre while the user keeps
+ * scrolling), and 0.87–1 is the settle. The settle is generous on purpose —
+ * the damped follow lags raw scroll, so it needs this much runway for the
+ * pushback to finish and rest before the pin releases; trimming it makes the
+ * exit collide with the page starting to move.
  */
 export const DEFAULT_TIMELINE: Timeline = {
-  deviceIn: [0, 0.2],
-  lidOpen: [0.26, 0.52],
-  dive: [0.46, 0.68],
-  recede: [0.8, 0.93],
+  deviceIn: [0, 0.18],
+  lidOpen: [0.24, 0.48],
+  dive: [0.42, 0.64],
+  recede: [0.74, 0.87],
 };
 
 /** Journey pose defaults (tuned on the NOX homepage). */

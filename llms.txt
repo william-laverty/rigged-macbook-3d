@@ -197,8 +197,9 @@ export default function Journey() {
 The pinned journey: the device rises in closed, the lid opens onto the playing video, the
 camera dives in and holds there while the user keeps scrolling, then the device recedes,
 settles for a beat, and the page scrolls on. Lengthen the hold by moving `timeline.recede`
-later, adjust the settle by moving `recede`'s end, or give the whole journey more scroll
-room with `height`.
+later, or give the whole journey more scroll room with `height`. Keep the settle generous
+(the default leaves 0.87–1): the damped follow trails raw scroll, so the pushback needs that
+runway to finish and rest before the pin releases.
 
 ## Canonical snippet 3: frameDriver binding (e.g. Framer Motion)
 
@@ -224,10 +225,10 @@ export default function HoverOpen() {
 ```json
 {
   "DEFAULT_TIMELINE": {
-    "deviceIn": [0, 0.2],
-    "lidOpen": [0.26, 0.52],
-    "dive": [0.46, 0.68],
-    "recede": [0.8, 0.93]
+    "deviceIn": [0, 0.18],
+    "lidOpen": [0.24, 0.48],
+    "dive": [0.42, 0.64],
+    "recede": [0.74, 0.87]
   },
   "DEFAULT_POSES": {
     "intro": { "yaw": -0.5, "pitch": 0.32, "scale": 0.62, "x": 0, "y": 0.25 },

@@ -108,10 +108,10 @@ releases and the page scrolls on).
   screen={{ src: '/demo.webm', fallbackSrc: '/demo.mp4' }}
   lighting="studio-dark"
   timeline={{                                       // named beats, 0–1, all optional
-    deviceIn: [0, 0.2],                             // fade/rise in, intro pose
-    lidOpen: [0.26, 0.52],
-    dive: [0.46, 0.68],                             // overlaps lid-open tail by design
-    recede: [0.8, 0.93],                            // 0.68–0.8 gap = hold; 0.93–1 tail = settle
+    deviceIn: [0, 0.18],                            // fade/rise in, intro pose
+    lidOpen: [0.24, 0.48],
+    dive: [0.42, 0.64],                             // overlaps lid-open tail by design
+    recede: [0.74, 0.87],                           // 0.64–0.74 gap = hold; 0.87–1 tail = settle
   }}
   poses={{ intro: { yaw: -0.5, pitch: 0.32, scale: 0.62, y: 0.25 },   // FRAME defaults
            dive:  { yaw: 0, pitch: 0.05, scale: 1.0, y: 0.05 },
