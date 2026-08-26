@@ -58,12 +58,12 @@ interface MacbookStageProps extends Omit<CanvasProps, 'children'> {
 }
 
 /** The full scroll journey (pin -> lid open -> dive -> hold on the playing video ->
- * recede and hand scroll back to the page), zero scroll-library dependencies. */
+ * recede -> settle -> hand scroll back to the page), zero scroll-library dependencies. */
 function MacbookScroll(props: MacbookScrollProps & React.RefAttributes<MacbookScrollHandle>): JSX.Element;
 
 interface MacbookScrollProps {
   screen: string | ScreenSource;      // the video (or image) that plays once the lid opens
-  height?: string;                    // default '500vh'
+  height?: string;                    // default '600vh'
   lighting?: LightingPreset;          // default 'studio-dark'
   timeline?: Partial<Timeline>;       // unspecified beats keep tuned defaults
   poses?: PosesPartial;               // unspecified values keep tuned defaults
@@ -135,9 +135,11 @@ interface Timeline {
   deviceIn: [number, number];  // device fades/rises in
   lidOpen: [number, number];  // lid closed -> open; screen wakes across the back 80%
   dive: [number, number];     // camera-relative: intro pose -> dived-in pose
-  recede: [number, number];   // push-back as scroll hands off to the page
-  // The gap between dive[1] and recede[0] is the hold: the open MacBook plays its
-  // video front and centre while the user keeps scrolling.
+  recede: [number, number];   // push-back so the whole laptop is visible again
+  // Two deliberate rests: the gap between dive[1] and recede[0] is the hold (the
+  // open MacBook plays its video front and centre while the user keeps scrolling),
+  // and the tail between recede[1] and 1 is the settle (the pushed-back device
+  // rests a beat before the pin releases and the page scrolls on).
 }
 
 interface Pose { yaw: number; pitch: number; scale: number; x: number; y: number; }
@@ -184,7 +186,7 @@ import { MacbookScroll } from 'rigged-macbook-3d';
 export default function Journey() {
   return (
     <MacbookScroll
-      height="500vh"
+      height="600vh"
       screen={{ src: '/videos/demo.webm', fallbackSrc: '/videos/demo.mp4' }}
       fallback={<div>Here's a quiet fallback instead.</div>}
     />
@@ -193,9 +195,10 @@ export default function Journey() {
 ```
 
 The pinned journey: the device rises in closed, the lid opens onto the playing video, the
-camera dives in and holds there while the user keeps scrolling, then the device recedes and
-the page scrolls on. Lengthen the hold by moving `timeline.recede` later, or give the whole
-journey more scroll room with `height`.
+camera dives in and holds there while the user keeps scrolling, then the device recedes,
+settles for a beat, and the page scrolls on. Lengthen the hold by moving `timeline.recede`
+later, adjust the settle by moving `recede`'s end, or give the whole journey more scroll
+room with `height`.
 
 ## Canonical snippet 3: frameDriver binding (e.g. Framer Motion)
 
@@ -221,10 +224,10 @@ export default function HoverOpen() {
 ```json
 {
   "DEFAULT_TIMELINE": {
-    "deviceIn": [0, 0.24],
-    "lidOpen": [0.3, 0.58],
-    "dive": [0.52, 0.7],
-    "recede": [0.86, 1]
+    "deviceIn": [0, 0.2],
+    "lidOpen": [0.26, 0.52],
+    "dive": [0.46, 0.68],
+    "recede": [0.8, 0.93]
   },
   "DEFAULT_POSES": {
     "intro": { "yaw": -0.5, "pitch": 0.32, "scale": 0.62, "x": 0, "y": 0.25 },

@@ -20,7 +20,7 @@ export interface MacbookScrollHandle {
 export interface MacbookScrollProps {
   /** The video (or image) that plays on the screen once the lid opens. */
   screen: string | ScreenSource;
-  /** Total scroll length of the pinned journey. Default '500vh'. */
+  /** Total scroll length of the pinned journey. Default '600vh'. */
   height?: string;
   /** Lighting preset. Default 'studio-dark'. */
   lighting?: LightingPreset;
@@ -91,13 +91,13 @@ function ScrollRig({
  * pins a sticky viewport; scroll maps to a target progress; a critically-damped
  * follow chases it, so wheel steps become fluid motion and everything reverses
  * exactly. The device rises in, the lid opens onto your playing video, the
- * journey holds there while the user keeps scrolling, then the device recedes
- * and scroll hands off to the rest of the page.
+ * journey holds there while the user keeps scrolling, then the device recedes,
+ * settles for a beat, and scroll hands off to the rest of the page.
  */
 export const MacbookScroll = forwardRef<MacbookScrollHandle, MacbookScrollProps>(function MacbookScroll(
   {
     screen,
-    height = '500vh',
+    height = '600vh',
     lighting = 'studio-dark',
     timeline: timelineIn,
     poses: posesIn,

@@ -33,15 +33,17 @@ export const FIT_SIZE = 4.2;
 
 /**
  * Journey beat defaults. The lid gets over a quarter of the journey so it
- * swings open unhurried, dive deliberately overlaps its tail, and the
- * 0.7–0.86 gap before recede is the hold: the open MacBook plays its video
- * front and centre while the user keeps scrolling.
+ * swings open unhurried, dive deliberately overlaps its tail and takes its
+ * time pulling in, and the two gaps are deliberate rests: 0.68–0.8 is the
+ * hold (the open MacBook plays its video front and centre while the user
+ * keeps scrolling), and 0.93–1 is the settle (the pushed-back device rests a
+ * beat before the pin releases and the page scrolls on).
  */
 export const DEFAULT_TIMELINE: Timeline = {
-  deviceIn: [0, 0.24],
-  lidOpen: [0.3, 0.58],
-  dive: [0.52, 0.7],
-  recede: [0.86, 1],
+  deviceIn: [0, 0.2],
+  lidOpen: [0.26, 0.52],
+  dive: [0.46, 0.68],
+  recede: [0.8, 0.93],
 };
 
 /** Journey pose defaults (tuned on the NOX homepage). */

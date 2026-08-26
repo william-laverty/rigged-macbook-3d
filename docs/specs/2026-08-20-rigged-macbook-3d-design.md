@@ -11,7 +11,7 @@ A React/three.js component library providing a **genuinely rigged 3D MacBook**: 
 model whose lid opens and closes on a working hinge, whose screen displays arbitrary
 video/image/texture content, with hand-tuned studio lighting presets — plus an optional
 zero-dependency scroll driver for a pinned scroll journey (intro pose → lid open → camera
-dive → hold on the playing video → recede, handing scroll back to the page).
+dive → hold on the playing video → recede → settle, handing scroll back to the page).
 
 This is explicitly NOT another CSS-transform "MacBook scroll" image mockup. The
 differentiator is the rig: consumers can animate lid angle, placement, rotation, lighting,
@@ -96,21 +96,22 @@ management: pauses when off-screen via IntersectionObserver (prop-disableable).
 A pinned journey with zero added dependencies: a tall wrapper div + `position: sticky`
 child (no GSAP pin, no pin-spacer DOM surgery), scrollY mapped to raw progress, then the
 critically-damped `smoothDamp` follow run in a rAF loop. Everything renders from the
-smoothed value, so choppy wheel input becomes fluid motion and reversal is exact. The gap
-between the dive's end and recede's start is the hold: the open MacBook plays its video
-front and centre while the user keeps scrolling, then recedes as scroll hands off to the
-rest of the page.
+smoothed value, so choppy wheel input becomes fluid motion and reversal is exact. Two gaps
+in the timeline are deliberate rests: between the dive's end and recede's start is the hold
+(the open MacBook plays its video front and centre while the user keeps scrolling), and
+after recede's end is the settle (the pushed-back device rests a beat before the pin
+releases and the page scrolls on).
 
 ```tsx
 <MacbookScroll
-  height="500vh"                                    // pin length
+  height="600vh"                                    // pin length
   screen={{ src: '/demo.webm', fallbackSrc: '/demo.mp4' }}
   lighting="studio-dark"
   timeline={{                                       // named beats, 0–1, all optional
-    deviceIn: [0, 0.24],                            // fade/rise in, intro pose
-    lidOpen: [0.3, 0.58],
-    dive: [0.52, 0.7],                              // overlaps lid-open tail by design
-    recede: [0.86, 1],                              // 0.7–0.86 gap = the hold
+    deviceIn: [0, 0.2],                             // fade/rise in, intro pose
+    lidOpen: [0.26, 0.52],
+    dive: [0.46, 0.68],                             // overlaps lid-open tail by design
+    recede: [0.8, 0.93],                            // 0.68–0.8 gap = hold; 0.93–1 tail = settle
   }}
   poses={{ intro: { yaw: -0.5, pitch: 0.32, scale: 0.62, y: 0.25 },   // FRAME defaults
            dive:  { yaw: 0, pitch: 0.05, scale: 1.0, y: 0.05 },

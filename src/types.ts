@@ -24,7 +24,11 @@ export interface Timeline {
   lidOpen: [number, number];
   /** Camera-relative dive: intro pose → dived-in pose. */
   dive: [number, number];
-  /** Push-back so the whole laptop is visible as scroll hands off to the page. */
+  /**
+   * Push-back so the whole laptop is visible again. End it before 1 — the
+   * remaining tail is the settle, where the receded device holds still for a
+   * beat before the pin releases and the page scrolls on.
+   */
   recede: [number, number];
 }
 

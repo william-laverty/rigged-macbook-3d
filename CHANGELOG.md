@@ -9,11 +9,12 @@ true) pausing the video while the lid is shut or the screen is dark, and
 
 Retuned scroll journey: `<MacbookScroll screen>` takes the video that plays once
 the lid opens, and the timeline beats are `deviceIn` → `lidOpen` → `dive` →
-`recede`, with the gap before `recede` holding on the open, playing MacBook
-while the user keeps scrolling — then the device pushes back and scroll hands
-off to the rest of the page. The damped follow adapts to input velocity — slow
-scrolls track closely, flicks absorb into one continuous glide, and a hard
-fling is capped at a cinematic pace. Default `height` is now `'500vh'`.
+`recede`, with two deliberate rests — the gap before `recede` holds on the open,
+playing MacBook while the user keeps scrolling, and the tail after it settles
+the pushed-back device for a beat before scroll hands off to the rest of the
+page. The damped follow adapts to input velocity — slow scrolls track closely,
+flicks absorb into one continuous glide, and a hard fling is capped at a
+cinematic pace. Default `height` is now `'600vh'`.
 
 ## 0.1.1 — 2026-08-24
 
